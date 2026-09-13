@@ -115,37 +115,53 @@ Not yet implemented (see `docs/ROADMAP.md`): `backtest`, `bursary-search`,
 `bursary-score`, `generate-checklist` -- these exist as CLI stubs that say so
 rather than silently doing nothing.
 
-## Windows executable (.exe)
+## Windows executables (.exe)
 
 If you don't want to install Python, `.github/workflows/build-windows-exe.yml`
-builds a standalone `fpl-automate.exe` on a real Windows machine (PyInstaller
+builds **two** standalone executables on a real Windows machine (PyInstaller
 can't cross-compile, so this has to run on GitHub's `windows-latest` runners,
-not in a Linux dev environment) and bundles the CBC solver PuLP needs for
-lineup optimisation, so nothing else needs installing.
+not in a Linux dev environment), each bundling the CBC solver PuLP needs for
+lineup optimisation, so nothing else needs installing:
 
-**Getting it:** open the repo's GitHub Actions tab -> "Build Windows
-Executable" -> "Run workflow". When it finishes, download the
-`fpl-automate-windows` artifact and unzip it -- you'll get one file,
-`fpl-automate.exe`. (Push a tag like `v0.1.0` instead of running it manually
-and it'll also attach the exe to a GitHub Release, which gives you a
-permanent download link instead of an Actions artifact that expires.)
+- **`fpl-automate-gui.exe`** -- a desktop app with a **Settings tab** (a form
+  for your team ID, email/SMTP details, etc. -- saves to a config file for
+  you, you never open or edit that file yourself) and a **Dashboard tab**
+  (buttons for each action, results shown inline). Start here if you'd
+  rather not touch a terminal or text file at all.
+- **`fpl-automate.exe`** -- the command-line version, for running specific
+  commands, scripting, or scheduling.
 
-**First run:** put `fpl-automate.exe` in its own folder (it will create
+**Getting them:** open the repo's GitHub Actions tab -> "Build Windows
+Executables" -> "Run workflow". When it finishes, download the
+`fpl-automate-gui-windows` and/or `fpl-automate-windows` artifacts and unzip
+them. (Push a tag like `v0.1.0` instead of running it manually and it'll
+also attach both exes to a GitHub Release, which gives you a permanent
+download link instead of an Actions artifact that expires.)
+
+**Using the GUI:** put `fpl-automate-gui.exe` in its own folder (it creates
 `.env`, `data/`, and `reports/` next to itself -- keep it out of `Downloads`
-clutter). Double-click it once: it creates a starter `.env` in that same
-folder and tells you to edit it (confirm `FPL_TEAM_ID`, optionally turn on
-email alerts), then stops. Edit the file, then run it again.
+clutter). Double-click it. On the **Settings** tab, fill in your FPL Team ID
+(and, if you want alerts, tick "Enable email notifications" and fill in your
+SMTP details -- there's a "Send Test Email" button to check it works) and
+click **Save Settings**. Switch to the **Dashboard** tab, pick a strategy,
+and click any action (Health Check, Analyse Squad, Recommend Transfers,
+Optimise Lineup, Run Weekly Plan) -- the result appears in the panel below.
+"Open Reports Folder" jumps straight to the saved report files.
 
-**Using it:** double-clicking runs whatever you last configured, prints the
-result, and waits for Enter before closing so you can read it. For specific
-commands (`analyse-squad`, `recommend-transfers --strategy aggressive`,
-etc.), open a terminal (cmd or PowerShell), `cd` into the folder, and run
-`fpl-automate.exe <command>` the same way you would the Python CLI -- every
-command in "Running it" above works identically.
+**Using the CLI exe:** put `fpl-automate.exe` in its own folder the same
+way. Double-click it once: it creates a starter `.env` and tells you to
+edit it (or just use the GUI instead, which manages the same file for you),
+then stops. Edit the file, then run it again -- it runs whatever you last
+configured, prints the result, and waits for Enter before closing. For
+specific commands (`analyse-squad`, `recommend-transfers --strategy
+aggressive`, etc.), open a terminal (cmd or PowerShell), `cd` into the
+folder, and run `fpl-automate.exe <command>` the same way you would the
+Python CLI -- every command in "Running it" above works identically.
 
-Same safety model as everywhere else in this project: the .exe only reads
-public FPL data and writes a report. It never logs into FPL and never
-touches your squad.
+Same safety model as everywhere else in this project, for both: they only
+read public FPL data and write a report. Neither logs into FPL, and neither
+touches your squad -- "Send Test Email" only ever sends a test email, never
+a transfer.
 
 ## Scheduling
 
@@ -176,7 +192,7 @@ your own cron/Task Scheduler.
   maintain, report history lives in your repo.
 - **Your own machine.** `pip install -e .` + cron/Task Scheduler calling
   `fpl-automate run-weekly-plan`.
-- **Windows .exe, no Python needed.** See "Windows executable (.exe)" above --
+- **Windows .exe, no Python needed.** See "Windows executables (.exe)" above --
   built by `.github/workflows/build-windows-exe.yml` on a real Windows
   runner, since PyInstaller can't cross-compile from Linux/macOS.
 - **Docker.** Not included yet (see Roadmap) -- the project has no

@@ -29,6 +29,9 @@ build = [
 [project.scripts]
 fpl-automate = "fpl_automate.cli:main"
 
+[project.gui-scripts]
+fpl-automate-gui = "fpl_automate.gui.app:gui_main"
+
 [build-system]
 requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"

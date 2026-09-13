@@ -1,11 +1,14 @@
-name: Build Windows Executable
+name: Build Windows Executables
 
-# Builds a standalone fpl-automate.exe. Must run on a real Windows machine --
-# PyInstaller does not cross-compile -- which is exactly what a GitHub-hosted
-# windows-latest runner is. That runner also has normal internet access
-# (unlike some sandboxed dev environments), so the smoke-test step below
-# exercises the actual built exe against the real FPL API and the real
-# bundled CBC solver, not just "did it compile."
+# Builds standalone fpl-automate.exe (CLI) and fpl-automate-gui.exe (Settings
+# + Dashboard GUI). Must run on a real Windows machine -- PyInstaller does
+# not cross-compile -- which is exactly what a GitHub-hosted windows-latest
+# runner is. That runner also has normal internet access (unlike some
+# sandboxed dev environments) and a real desktop session (unlike a headless
+# Linux runner, which matters for actually launching the Tkinter GUI), so
+# the smoke-test steps below exercise the real built exes against the real
+# FPL API, the real bundled CBC solver, and (for the GUI) an actual window,
+# not just "did it compile."
 
 on:
   workflow_dispatch: {}  # build on demand from the Actions tab
@@ -26,10 +29,13 @@ jobs:
       - name: Install dependencies
         run: pip install -e ".[build]"
 
-      - name: Build with PyInstaller
+      - name: Build CLI with PyInstaller
         run: pyinstaller --clean --noconfirm packaging/fpl-automate.spec
 
-      - name: Smoke test the built exe (real FPL API + real CBC solver)
+      - name: Build GUI with PyInstaller
+        run: pyinstaller --clean --noconfirm packaging/fpl-automate-gui.spec
+
+      - name: Smoke test the CLI exe (real FPL API + real CBC solver)
         shell: bash  # bash (Git Bash, preinstalled) propagates a nonzero exe exit
         # code as a failed step; PowerShell's default `run:` shell famously does not.
         env:
@@ -43,15 +49,31 @@ jobs:
           echo "----- WEEKLY REPORT -----"
           cat dist/reports/*.md
 
-      - name: Upload exe as a build artifact
+      - name: Smoke test the GUI exe (real window, self-closing)
+        shell: bash
+        timeout-minutes: 3
+        env:
+          FPL_AUTOMATE_GUI_SELFTEST: "1"  # builds the window, then auto-closes after 1.5s
+        run: ./dist/fpl-automate-gui.exe
+
+      - name: Upload CLI exe as a build artifact
         uses: actions/upload-artifact@v4
         with:
           name: fpl-automate-windows
           path: dist/fpl-automate.exe
           if-no-files-found: error
 
-      - name: Attach to GitHub Release
+      - name: Upload GUI exe as a build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fpl-automate-gui-windows
+          path: dist/fpl-automate-gui.exe
+          if-no-files-found: error
+
+      - name: Attach both to GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/fpl-automate.exe
+          files: |
+            dist/fpl-automate.exe
+            dist/fpl-automate-gui.exe

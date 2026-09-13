@@ -113,3 +113,10 @@ def get_settings(env_file: str | None = None) -> Settings:
             "Configuration is invalid or incomplete. Copy .env.example to .env "
             f"and fill in the required values. Details: {exc}"
         ) from exc
+
+
+def clear_settings_cache() -> None:
+    """Call after writing new values to .env (e.g. the GUI's Settings tab saving)
+    so the next get_settings() call re-reads the file instead of returning a
+    stale cached Settings object."""
+    get_settings.cache_clear()

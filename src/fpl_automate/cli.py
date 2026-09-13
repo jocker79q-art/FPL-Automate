@@ -7,20 +7,28 @@ file and `packaging/fpl-automate.spec` for how that build works.
 """
 from __future__ import annotations
 
-import contextlib
 import os
-import shutil
 import sys
-from pathlib import Path
 
 import typer
 from rich.console import Console
 from rich.table import Table
 
-from fpl_automate.config import ConfigError, get_settings
+from fpl_automate.config import ConfigError
 from fpl_automate.logging_config import configure_logging
 from fpl_automate.optimization.lineup import optimize_lineup
+from fpl_automate.runtime import (
+    APP_BASE_DIR,
+    BUNDLE_DIR,
+    DEFAULT_CACHE_DIR,
+    DEFAULT_REPORTS_DIR,
+    ENV_FILE_PATH,
+    IS_FROZEN,
+    ensure_env_file_exists,
+    get_app_settings,
+)
 from fpl_automate.squad.state import find_relevant_events, resolve_squad_state
+from fpl_automate.win_console import fix_windows_console_encoding
 from fpl_automate.workflow import (
     build_client,
     build_db,
@@ -29,42 +37,14 @@ from fpl_automate.workflow import (
     run_weekly_plan,
 )
 
-if sys.platform == "win32":
-    # Windows' legacy console codepage (often cp1252 or cp437, not UTF-8) mangles
-    # the "£" in every price we print (observed as garbled bytes in a real build's
-    # output). Force UTF-8 on both the console and our own stdio; best-effort
-    # because SetConsoleOutputCP can be unavailable in some embedded contexts and
-    # this must never be fatal to the actual command being run.
-    with contextlib.suppress(Exception):
-        import ctypes
-
-        ctypes.windll.kernel32.SetConsoleOutputCP(65001)
-        sys.stdout.reconfigure(encoding="utf-8")
-        sys.stderr.reconfigure(encoding="utf-8")
+fix_windows_console_encoding()
 
 app = typer.Typer(add_completion=False, help="FPL quantitative decision-support CLI (recommendation-only).")
 console = Console()
 
-IS_FROZEN = getattr(sys, "frozen", False)
-
-if IS_FROZEN:
-    # Packaged .exe: treat the folder the executable lives in as "home" for
-    # .env, reports/, and data/ -- NOT whatever directory happened to be
-    # current when it was launched (a double-click's cwd isn't reliable).
-    APP_BASE_DIR = Path(sys.executable).resolve().parent
-    _BUNDLE_DIR = Path(getattr(sys, "_MEIPASS", APP_BASE_DIR))
-else:
-    APP_BASE_DIR = Path(__file__).resolve().parents[2]
-    _BUNDLE_DIR = APP_BASE_DIR
-
 REPO_ROOT = APP_BASE_DIR
-ENV_FILE_PATH = APP_BASE_DIR / ".env"
-DEFAULT_REPORTS_DIR = APP_BASE_DIR / "reports"
-DEFAULT_CACHE_DIR = APP_BASE_DIR / "data" / "cache"
-
-
-def _get_settings():
-    return get_settings(env_file=str(ENV_FILE_PATH))
+_BUNDLE_DIR = BUNDLE_DIR
+_get_settings = get_app_settings
 
 
 def _init() -> None:
@@ -318,20 +298,19 @@ def _pause_if_interactive() -> None:
 
 
 def _ensure_env_file_exists() -> bool:
-    """Returns True if a fresh .env was just created and the caller must stop
-    here so the user can fill it in before anything tries to use it. Skipped
-    entirely if FPL_TEAM_ID is already set as a real environment variable
-    (e.g. CI, or a wrapper script) -- that's a deliberate alternative to a
-    .env file, not a sign one is missing."""
-    if ENV_FILE_PATH.exists() or os.environ.get("FPL_TEAM_ID"):
+    """Returns True if the caller must stop here (a fresh .env was just
+    created, or none could be) rather than proceeding to a command that
+    needs settings. Prefer the GUI (`fpl-automate-gui`) if you'd rather fill
+    in settings through a form than a text file -- see README."""
+    created, template_found = ensure_env_file_exists()
+    if not created:
         return False
-    template = _BUNDLE_DIR / ".env.example"
-    if template.exists():
-        shutil.copyfile(template, ENV_FILE_PATH)
+    if template_found:
         console.print(f"[yellow]No .env found -- created one at:[/yellow] {ENV_FILE_PATH}")
         console.print(
             "Open that file in a text editor, confirm FPL_TEAM_ID (and set up email "
-            "notifications if you want them), then run this program again."
+            "notifications if you want them), then run this program again. Prefer a "
+            "form instead of a text file? Use fpl-automate-gui."
         )
     else:
         console.print(
