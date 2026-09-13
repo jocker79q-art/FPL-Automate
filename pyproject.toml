@@ -22,9 +22,12 @@ dev = [
     "mypy>=1.9",
     "ruff>=0.4",
 ]
+build = [
+    "pyinstaller>=6.6",
+]
 
 [project.scripts]
-fpl-automate = "fpl_automate.cli:app"
+fpl-automate = "fpl_automate.cli:main"
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]

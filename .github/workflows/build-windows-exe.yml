@@ -1,0 +1,53 @@
+name: Build Windows Executable
+
+# Builds a standalone fpl-automate.exe. Must run on a real Windows machine --
+# PyInstaller does not cross-compile -- which is exactly what a GitHub-hosted
+# windows-latest runner is. That runner also has normal internet access
+# (unlike some sandboxed dev environments), so the smoke-test step below
+# exercises the actual built exe against the real FPL API and the real
+# bundled CBC solver, not just "did it compile."
+
+on:
+  workflow_dispatch: {}  # build on demand from the Actions tab
+  push:
+    tags:
+      - "v*.*.*"  # also build + attach to a Release when you tag a version
+
+jobs:
+  build-windows-exe:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -e ".[build]"
+
+      - name: Build with PyInstaller
+        run: pyinstaller --clean --noconfirm packaging/fpl-automate.spec
+
+      - name: Smoke test the built exe (real FPL API + real CBC solver)
+        shell: bash  # bash (Git Bash, preinstalled) propagates a nonzero exe exit
+        # code as a failed step; PowerShell's default `run:` shell famously does not.
+        env:
+          FPL_TEAM_ID: "9242093"  # public team ID, read-only calls only
+        run: |
+          ./dist/fpl-automate.exe health-check
+          ./dist/fpl-automate.exe analyse-squad
+          ./dist/fpl-automate.exe optimise-lineup
+
+      - name: Upload exe as a build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fpl-automate-windows
+          path: dist/fpl-automate.exe
+          if-no-files-found: error
+
+      - name: Attach to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/fpl-automate.exe

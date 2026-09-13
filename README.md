@@ -115,6 +115,38 @@ Not yet implemented (see `docs/ROADMAP.md`): `backtest`, `bursary-search`,
 `bursary-score`, `generate-checklist` -- these exist as CLI stubs that say so
 rather than silently doing nothing.
 
+## Windows executable (.exe)
+
+If you don't want to install Python, `.github/workflows/build-windows-exe.yml`
+builds a standalone `fpl-automate.exe` on a real Windows machine (PyInstaller
+can't cross-compile, so this has to run on GitHub's `windows-latest` runners,
+not in a Linux dev environment) and bundles the CBC solver PuLP needs for
+lineup optimisation, so nothing else needs installing.
+
+**Getting it:** open the repo's GitHub Actions tab -> "Build Windows
+Executable" -> "Run workflow". When it finishes, download the
+`fpl-automate-windows` artifact and unzip it -- you'll get one file,
+`fpl-automate.exe`. (Push a tag like `v0.1.0` instead of running it manually
+and it'll also attach the exe to a GitHub Release, which gives you a
+permanent download link instead of an Actions artifact that expires.)
+
+**First run:** put `fpl-automate.exe` in its own folder (it will create
+`.env`, `data/`, and `reports/` next to itself -- keep it out of `Downloads`
+clutter). Double-click it once: it creates a starter `.env` in that same
+folder and tells you to edit it (confirm `FPL_TEAM_ID`, optionally turn on
+email alerts), then stops. Edit the file, then run it again.
+
+**Using it:** double-clicking runs whatever you last configured, prints the
+result, and waits for Enter before closing so you can read it. For specific
+commands (`analyse-squad`, `recommend-transfers --strategy aggressive`,
+etc.), open a terminal (cmd or PowerShell), `cd` into the folder, and run
+`fpl-automate.exe <command>` the same way you would the Python CLI -- every
+command in "Running it" above works identically.
+
+Same safety model as everywhere else in this project: the .exe only reads
+public FPL data and writes a report. It never logs into FPL and never
+touches your squad.
+
 ## Scheduling
 
 `.github/workflows/weekly-plan.yml` runs `run-weekly-plan` automatically
@@ -144,6 +176,9 @@ your own cron/Task Scheduler.
   maintain, report history lives in your repo.
 - **Your own machine.** `pip install -e .` + cron/Task Scheduler calling
   `fpl-automate run-weekly-plan`.
+- **Windows .exe, no Python needed.** See "Windows executable (.exe)" above --
+  built by `.github/workflows/build-windows-exe.yml` on a real Windows
+  runner, since PyInstaller can't cross-compile from Linux/macOS.
 - **Docker.** Not included yet (see Roadmap) -- the project has no
   system-level dependencies beyond Python + the packages in
   `pyproject.toml`, so a minimal `python:3.11-slim` image with `pip install

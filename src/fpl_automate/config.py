@@ -6,7 +6,7 @@ loudly at startup rather than silently degrading.
 """
 from __future__ import annotations
 
-from functools import lru_cache
+from functools import cache
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -100,10 +100,14 @@ class Settings(BaseSettings):
             )
 
 
-@lru_cache(maxsize=1)
-def get_settings() -> Settings:
+@cache
+def get_settings(env_file: str | None = None) -> Settings:
+    """Loads settings from `env_file` (defaults to ".env" in the current working
+    directory). The packaged .exe passes an absolute path next to the executable
+    itself, since a double-clicked exe's working directory isn't reliable."""
     try:
-        return Settings()  # type: ignore[call-arg]
+        kwargs = {"_env_file": env_file} if env_file is not None else {}
+        return Settings(**kwargs)  # type: ignore[arg-type]
     except Exception as exc:
         raise ConfigError(
             "Configuration is invalid or incomplete. Copy .env.example to .env "

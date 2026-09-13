@@ -17,6 +17,7 @@
 | Execution | `execution/base.py` | Inert by design -- see its module docstring |
 | Orchestration | `workflow.py` | Wires the above into `run_weekly_plan()` |
 | CLI | `cli.py` | Typer commands, one per pipeline stage or the full run |
+| Packaging | `packaging/fpl-automate.spec`, `.github/workflows/build-windows-exe.yml` | PyInstaller build (Windows .exe) -- see "Packaging as a Windows .exe" below |
 
 ## Why these technology choices
 
@@ -76,3 +77,35 @@ See `workflow.py::run_weekly_plan` for the literal code; in prose:
   any network access.
 - **No test ever calls the real FPL API.** This keeps the suite fast,
   deterministic, and safe to run in CI without rate-limit concerns.
+
+## Packaging as a Windows .exe
+
+`packaging/fpl-automate.spec` is a PyInstaller spec that bundles `cli.py`
+(via the `main()` wrapper, not `app()` directly) plus PuLP's compiled CBC
+solver binary into a single-file executable. Two details make this actually
+work rather than fail at runtime:
+
+1. **The CBC binary must be declared as a PyInstaller `binaries` entry, not
+   `datas`.** PuLP ships a real platform-specific executable under
+   `pulp/solverdir/cbc/<os>/<arch>/`. PyInstaller only preserves the
+   executable permission bit for `binaries` entries -- bundling it as plain
+   `datas` extracts a file that looks right but fails at solve-time with
+   `PulpSolverError: PULP_CBC_CMD: Not Available (check permissions on
+   ...)`. This was caught by an actual local build-and-run smoke test before
+   ever pushing to CI, not assumed.
+2. **`cli.py`'s `main()` (not the Typer `app` object) is the real entry
+   point.** It resolves `.env`/`data/`/`reports/` relative to the exe's own
+   folder rather than the caller's current directory (a double-clicked
+   exe's cwd isn't reliable), auto-creates a starter `.env` from the bundled
+   `.env.example` on first run, and pauses before closing (only when stdin
+   is an actual terminal -- `sys.stdin.isatty()` -- so it never hangs a
+   non-interactive CI run) so a double-clicked console window doesn't just
+   flash and vanish.
+
+PyInstaller does not cross-compile, so the actual Windows build only happens
+on a `windows-latest` GitHub Actions runner
+(`.github/workflows/build-windows-exe.yml`), which also smoke-tests the
+built `.exe` against the *real* FPL API and the *real* Windows CBC solver
+(`health-check`, `analyse-squad`, `optimise-lineup`) before it's ever handed
+to a user, since that runner -- unlike some sandboxed dev environments --
+has normal outbound internet access.

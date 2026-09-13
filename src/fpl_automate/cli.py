@@ -1,6 +1,15 @@
-"""Command-line interface. Entry point: `fpl-automate <command>` (see pyproject.toml)."""
+"""Command-line interface.
+
+Entry point: `fpl-automate <command>` (see pyproject.toml) when installed
+normally, or `fpl-automate.exe <command>` (or just double-clicking it) when
+run as the packaged Windows executable -- see `main()` at the bottom of this
+file and `packaging/fpl-automate.spec` for how that build works.
+"""
 from __future__ import annotations
 
+import os
+import shutil
+import sys
 from pathlib import Path
 
 import typer
@@ -22,13 +31,30 @@ from fpl_automate.workflow import (
 app = typer.Typer(add_completion=False, help="FPL quantitative decision-support CLI (recommendation-only).")
 console = Console()
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_REPORTS_DIR = REPO_ROOT / "reports"
-DEFAULT_CACHE_DIR = REPO_ROOT / "data" / "cache"
+IS_FROZEN = getattr(sys, "frozen", False)
+
+if IS_FROZEN:
+    # Packaged .exe: treat the folder the executable lives in as "home" for
+    # .env, reports/, and data/ -- NOT whatever directory happened to be
+    # current when it was launched (a double-click's cwd isn't reliable).
+    APP_BASE_DIR = Path(sys.executable).resolve().parent
+    _BUNDLE_DIR = Path(getattr(sys, "_MEIPASS", APP_BASE_DIR))
+else:
+    APP_BASE_DIR = Path(__file__).resolve().parents[2]
+    _BUNDLE_DIR = APP_BASE_DIR
+
+REPO_ROOT = APP_BASE_DIR
+ENV_FILE_PATH = APP_BASE_DIR / ".env"
+DEFAULT_REPORTS_DIR = APP_BASE_DIR / "reports"
+DEFAULT_CACHE_DIR = APP_BASE_DIR / "data" / "cache"
+
+
+def _get_settings():
+    return get_settings(env_file=str(ENV_FILE_PATH))
 
 
 def _init() -> None:
-    settings = get_settings()
+    settings = _get_settings()
     configure_logging(settings.log_level)
 
 
@@ -37,7 +63,7 @@ def health_check() -> None:
     """Checks config, database, and FPL API reachability."""
     console.print("[bold]Health check[/bold]")
     try:
-        settings = get_settings()
+        settings = _get_settings()
         console.print("[green]OK[/green] configuration loaded")
     except ConfigError as exc:
         console.print(f"[red]FAIL[/red] configuration: {exc}")
@@ -68,7 +94,7 @@ def health_check() -> None:
 def fetch_data() -> None:
     """Fetches and persists current FPL data (players, teams, fixtures, gameweeks)."""
     _init()
-    settings = get_settings()
+    settings = _get_settings()
     client = build_client(settings, DEFAULT_CACHE_DIR)
     db = build_db(settings)
     data = fetch_and_validate(client, db)
@@ -82,7 +108,7 @@ def fetch_data() -> None:
 def validate_data() -> None:
     """Fetches data and reports whether it passes all data-quality checks."""
     _init()
-    settings = get_settings()
+    settings = _get_settings()
     client = build_client(settings, DEFAULT_CACHE_DIR)
     db = build_db(settings)
     try:
@@ -97,7 +123,7 @@ def validate_data() -> None:
 def analyse_squad() -> None:
     """Shows your current squad, bank, free transfers, and chip status."""
     _init()
-    settings = get_settings()
+    settings = _get_settings()
     client = build_client(settings, DEFAULT_CACHE_DIR)
     db = build_db(settings)
     data = fetch_and_validate(client, db)
@@ -129,7 +155,7 @@ def recommend_transfers_cmd(
 ) -> None:
     """Shows ranked transfer scenarios (including 'roll') for the next deadline."""
     _init()
-    settings = get_settings()
+    settings = _get_settings()
     client = build_client(settings, DEFAULT_CACHE_DIR)
     db = build_db(settings)
     data = fetch_and_validate(client, db)
@@ -174,7 +200,7 @@ def optimise_lineup_cmd(
 ) -> None:
     """Optimises starting XI / bench / captaincy for your CURRENT squad (no transfers)."""
     _init()
-    settings = get_settings()
+    settings = _get_settings()
     client = build_client(settings, DEFAULT_CACHE_DIR)
     db = build_db(settings)
     data = fetch_and_validate(client, db)
@@ -202,7 +228,7 @@ def run_weekly_plan_cmd(
 ) -> None:
     """Runs the full pipeline and writes/sends the weekly decision report."""
     _init()
-    settings = get_settings()
+    settings = _get_settings()
     report, md_path, json_path = run_weekly_plan(
         settings, DEFAULT_REPORTS_DIR, DEFAULT_CACHE_DIR, chosen_strategy=strategy  # type: ignore[arg-type]
     )
@@ -214,7 +240,7 @@ def run_weekly_plan_cmd(
 def show_history(limit: int = 20) -> None:
     """Shows past decisions and (if recorded) their outcomes."""
     _init()
-    settings = get_settings()
+    settings = _get_settings()
     db = build_db(settings)
     rows = db.history(limit)
     if not rows:
@@ -265,5 +291,69 @@ def generate_checklist() -> None:
     _not_yet_implemented("generate-checklist", "Phase 4 (quant applications module)")
 
 
+def _pause_if_interactive() -> None:
+    """Keeps a double-clicked console window open until the user reads it. Skipped
+    when stdin isn't a real terminal (CI, a script piping input, etc.) -- otherwise
+    this would hang or crash a non-interactive run waiting for input that never
+    comes."""
+    if sys.stdin.isatty():
+        try:
+            input("\nPress Enter to exit...")
+        except EOFError:
+            pass
+
+
+def _ensure_env_file_exists() -> bool:
+    """Returns True if a fresh .env was just created and the caller must stop
+    here so the user can fill it in before anything tries to use it. Skipped
+    entirely if FPL_TEAM_ID is already set as a real environment variable
+    (e.g. CI, or a wrapper script) -- that's a deliberate alternative to a
+    .env file, not a sign one is missing."""
+    if ENV_FILE_PATH.exists() or os.environ.get("FPL_TEAM_ID"):
+        return False
+    template = _BUNDLE_DIR / ".env.example"
+    if template.exists():
+        shutil.copyfile(template, ENV_FILE_PATH)
+        console.print(f"[yellow]No .env found -- created one at:[/yellow] {ENV_FILE_PATH}")
+        console.print(
+            "Open that file in a text editor, confirm FPL_TEAM_ID (and set up email "
+            "notifications if you want them), then run this program again."
+        )
+    else:
+        console.print(
+            f"[red]No .env found at {ENV_FILE_PATH} and no template is bundled.[/red] "
+            "Create one there with at least a line: FPL_TEAM_ID=<your team id>"
+        )
+    return True
+
+
+def main() -> None:
+    """Entry point for both `fpl-automate` (pyproject.toml console_scripts) and
+    the packaged .exe (packaging/fpl-automate.spec). Handles the two things a
+    plain `app()` call doesn't: making the exe's folder self-contained
+    (first-run .env creation, paths relative to the exe not the caller's cwd),
+    and keeping a double-clicked console window open long enough to read.
+    """
+    if IS_FROZEN:
+        os.chdir(APP_BASE_DIR)
+        if _ensure_env_file_exists():
+            _pause_if_interactive()
+            sys.exit(1)
+
+    exit_code = 0
+    try:
+        app()
+    except SystemExit as exc:
+        exit_code = exc.code if isinstance(exc.code, int) else (0 if exc.code is None else 1)
+    except Exception as exc:  # noqa: BLE001 - last-resort handler for a double-clicked exe
+        console.print(f"[red]Unexpected error:[/red] {exc}")
+        console.print_exception()
+        exit_code = 1
+
+    if IS_FROZEN:
+        _pause_if_interactive()
+    sys.exit(exit_code)
+
+
 if __name__ == "__main__":
-    app()
+    main()
