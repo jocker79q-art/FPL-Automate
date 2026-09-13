@@ -16,6 +16,9 @@ on:
     tags:
       - "v*.*.*"  # also build + attach to a Release when you tag a version
 
+permissions:
+  contents: write  # required to attach exe files to a GitHub Release
+
 jobs:
   build-windows-exe:
     runs-on: windows-latest
