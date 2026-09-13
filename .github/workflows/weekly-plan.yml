@@ -1,0 +1,65 @@
+name: FPL Weekly Plan
+
+# Recommendation-only automation: this workflow fetches data, computes
+# projections, and writes a report. It NEVER makes a transfer or changes
+# your squad -- see README.md "Safety model". ENABLE_AUTO_EXECUTION is not
+# even wired to anything yet (see src/fpl_automate/execution/base.py).
+
+on:
+  workflow_dispatch: {}  # run manually any time from the Actions tab
+  schedule:
+    # FPL deadlines are usually (not always) Friday evening UK time, but
+    # do vary. Running twice a day is cheap and catches most deadlines
+    # with a fresh, current report; adjust to taste.
+    - cron: "0 7 * * *"   # 07:00 UTC daily
+    - cron: "0 17 * * *"  # 17:00 UTC daily
+
+permissions:
+  contents: write  # to commit the generated report + decision history
+
+concurrency:
+  group: fpl-weekly-plan
+  cancel-in-progress: false
+
+jobs:
+  run-weekly-plan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -e .
+
+      - name: Run weekly plan (recommendation-only, dry-run)
+        env:
+          # Team ID is not a secret (it's visible in your public FPL team URL), so
+          # it's a repo *variable* rather than a secret -- see README for setup.
+          FPL_TEAM_ID: ${{ vars.FPL_TEAM_ID }}
+          FPL_MINI_LEAGUE_ID: ${{ vars.FPL_MINI_LEAGUE_ID }}
+          EMERGENCY_STOP: ${{ vars.EMERGENCY_STOP || 'false' }}
+          ENABLE_AUTO_EXECUTION: "false"
+          MAX_TRANSFER_RISK: ${{ vars.MAX_TRANSFER_RISK || '4' }}
+          EMAIL_NOTIFICATIONS_ENABLED: ${{ vars.EMAIL_NOTIFICATIONS_ENABLED || 'false' }}
+          SMTP_HOST: ${{ vars.SMTP_HOST || 'smtp.gmail.com' }}
+          SMTP_PORT: ${{ vars.SMTP_PORT || '587' }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+        run: fpl-automate run-weekly-plan
+
+      - name: Commit updated report + decision history
+        run: |
+          git config user.name "fpl-automate-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add reports/ data/fpl_automate.db
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Weekly plan: $(date -u +'%Y-%m-%d %H:%M UTC')"
+            git push
+          fi
