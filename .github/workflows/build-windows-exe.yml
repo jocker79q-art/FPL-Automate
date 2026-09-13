@@ -38,6 +38,10 @@ jobs:
           ./dist/fpl-automate.exe health-check
           ./dist/fpl-automate.exe analyse-squad
           ./dist/fpl-automate.exe optimise-lineup
+          ./dist/fpl-automate.exe recommend-transfers
+          ./dist/fpl-automate.exe run-weekly-plan
+          echo "----- WEEKLY REPORT -----"
+          cat dist/reports/*.md
 
       - name: Upload exe as a build artifact
         uses: actions/upload-artifact@v4

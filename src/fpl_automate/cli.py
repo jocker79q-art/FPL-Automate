@@ -7,6 +7,7 @@ file and `packaging/fpl-automate.spec` for how that build works.
 """
 from __future__ import annotations
 
+import contextlib
 import os
 import shutil
 import sys
@@ -27,6 +28,19 @@ from fpl_automate.workflow import (
     fetch_and_validate,
     run_weekly_plan,
 )
+
+if sys.platform == "win32":
+    # Windows' legacy console codepage (often cp1252 or cp437, not UTF-8) mangles
+    # the "£" in every price we print (observed as garbled bytes in a real build's
+    # output). Force UTF-8 on both the console and our own stdio; best-effort
+    # because SetConsoleOutputCP can be unavailable in some embedded contexts and
+    # this must never be fatal to the actual command being run.
+    with contextlib.suppress(Exception):
+        import ctypes
+
+        ctypes.windll.kernel32.SetConsoleOutputCP(65001)
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
 
 app = typer.Typer(add_completion=False, help="FPL quantitative decision-support CLI (recommendation-only).")
 console = Console()
