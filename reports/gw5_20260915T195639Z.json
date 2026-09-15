@@ -1,0 +1,330 @@
+{
+  "team_id": 9242093,
+  "gameweek": 5,
+  "generated_at": "2026-09-15T19:56:39.987297+00:00",
+  "approve_state": "APPROVE",
+  "projection_model": "ml",
+  "confidence": 0.94,
+  "recommended_scenario": {
+    "label": "Scott -> Szoboszlai, Vuskovic -> De Cuyper (both free)",
+    "moves": [
+      {
+        "sell_player_id": 69,
+        "buy_player_id": 368,
+        "sell_value_tenths": 60,
+        "buy_price_tenths": 70
+      },
+      {
+        "sell_player_id": 504,
+        "buy_player_id": 115,
+        "sell_value_tenths": 50,
+        "buy_price_tenths": 48
+      }
+    ],
+    "free_transfers_used": 2,
+    "paid_transfers": 0,
+    "points_hit": 0,
+    "resulting_bank_tenths": 125,
+    "baseline_ep_1gw": 57.37,
+    "new_ep_1gw": 66.78,
+    "baseline_ep_5gw": 287.76,
+    "new_ep_5gw": 337.62,
+    "ep_gain_1gw": 9.41,
+    "ep_gain_5gw": 49.86,
+    "net_ep_gain_5gw": 49.86,
+    "rationale": "Greedy 2nd transfer on top of the best single transfer found.",
+    "risk_notes": [],
+    "recommended": true
+  },
+  "transfer_scenarios": [
+    {
+      "label": "Scott -> Szoboszlai, Vuskovic -> De Cuyper (both free)",
+      "moves": [
+        {
+          "sell_player_id": 69,
+          "buy_player_id": 368,
+          "sell_value_tenths": 60,
+          "buy_price_tenths": 70
+        },
+        {
+          "sell_player_id": 504,
+          "buy_player_id": 115,
+          "sell_value_tenths": 50,
+          "buy_price_tenths": 48
+        }
+      ],
+      "free_transfers_used": 2,
+      "paid_transfers": 0,
+      "points_hit": 0,
+      "resulting_bank_tenths": 125,
+      "baseline_ep_1gw": 57.37,
+      "new_ep_1gw": 66.78,
+      "baseline_ep_5gw": 287.76,
+      "new_ep_5gw": 337.62,
+      "ep_gain_1gw": 9.41,
+      "ep_gain_5gw": 49.86,
+      "net_ep_gain_5gw": 49.86,
+      "rationale": "Greedy 2nd transfer on top of the best single transfer found.",
+      "risk_notes": [],
+      "recommended": true
+    },
+    {
+      "label": "Scott -> Szoboszlai (free)",
+      "moves": [
+        {
+          "sell_player_id": 69,
+          "buy_player_id": 368,
+          "sell_value_tenths": 60,
+          "buy_price_tenths": 70
+        }
+      ],
+      "free_transfers_used": 1,
+      "paid_transfers": 0,
+      "points_hit": 0,
+      "resulting_bank_tenths": 123,
+      "baseline_ep_1gw": 57.37,
+      "new_ep_1gw": 65.02,
+      "baseline_ep_5gw": 287.76,
+      "new_ep_5gw": 325.1,
+      "ep_gain_1gw": 7.65,
+      "ep_gain_5gw": 37.34,
+      "net_ep_gain_5gw": 37.34,
+      "rationale": "Projected Scott 13.3 vs Szoboszlai 43.5 pts over the next 5 GWs (best-XI impact, not raw player comparison).",
+      "risk_notes": [
+        "Szoboszlai: small_sample"
+      ],
+      "recommended": true
+    },
+    {
+      "label": "Scott -> B.Fernandes (free)",
+      "moves": [
+        {
+          "sell_player_id": 69,
+          "buy_player_id": 426,
+          "sell_value_tenths": 60,
+          "buy_price_tenths": 120
+        }
+      ],
+      "free_transfers_used": 1,
+      "paid_transfers": 0,
+      "points_hit": 0,
+      "resulting_bank_tenths": 73,
+      "baseline_ep_1gw": 57.37,
+      "new_ep_1gw": 60.4,
+      "baseline_ep_5gw": 287.76,
+      "new_ep_5gw": 304.22,
+      "ep_gain_1gw": 3.03,
+      "ep_gain_5gw": 16.46,
+      "net_ep_gain_5gw": 16.46,
+      "rationale": "Projected Scott 13.3 vs B.Fernandes 33.0 pts over the next 5 GWs (best-XI impact, not raw player comparison).",
+      "risk_notes": [
+        "B.Fernandes: small_sample"
+      ],
+      "recommended": true
+    },
+    {
+      "label": "Scott -> Gakpo (free)",
+      "moves": [
+        {
+          "sell_player_id": 69,
+          "buy_player_id": 367,
+          "sell_value_tenths": 60,
+          "buy_price_tenths": 72
+        }
+      ],
+      "free_transfers_used": 1,
+      "paid_transfers": 0,
+      "points_hit": 0,
+      "resulting_bank_tenths": 121,
+      "baseline_ep_1gw": 57.37,
+      "new_ep_1gw": 60.44,
+      "baseline_ep_5gw": 287.76,
+      "new_ep_5gw": 302.46,
+      "ep_gain_1gw": 3.07,
+      "ep_gain_5gw": 14.7,
+      "net_ep_gain_5gw": 14.7,
+      "rationale": "Projected Scott 13.3 vs Gakpo 32.1 pts over the next 5 GWs (best-XI impact, not raw player comparison).",
+      "risk_notes": [
+        "Gakpo: small_sample",
+        "Gakpo: injury_or_availability_doubt"
+      ],
+      "recommended": true
+    },
+    {
+      "label": "Vuskovic -> De Cuyper (free)",
+      "moves": [
+        {
+          "sell_player_id": 504,
+          "buy_player_id": 115,
+          "sell_value_tenths": 50,
+          "buy_price_tenths": 48
+        }
+      ],
+      "free_transfers_used": 1,
+      "paid_transfers": 0,
+      "points_hit": 0,
+      "resulting_bank_tenths": 135,
+      "baseline_ep_1gw": 57.37,
+      "new_ep_1gw": 59.24,
+      "baseline_ep_5gw": 287.76,
+      "new_ep_5gw": 300.45,
+      "ep_gain_1gw": 1.87,
+      "ep_gain_5gw": 12.69,
+      "net_ep_gain_5gw": 12.69,
+      "rationale": "Projected Vuskovic 14.3 vs De Cuyper 30.7 pts over the next 5 GWs (best-XI impact, not raw player comparison).",
+      "risk_notes": [
+        "De Cuyper: small_sample"
+      ],
+      "recommended": true
+    },
+    {
+      "label": "Mendy -> De Cuyper (free)",
+      "moves": [
+        {
+          "sell_player_id": 586,
+          "buy_player_id": 115,
+          "sell_value_tenths": 40,
+          "buy_price_tenths": 48
+        }
+      ],
+      "free_transfers_used": 1,
+      "paid_transfers": 0,
+      "points_hit": 0,
+      "resulting_bank_tenths": 125,
+      "baseline_ep_1gw": 57.37,
+      "new_ep_1gw": 59.24,
+      "baseline_ep_5gw": 287.76,
+      "new_ep_5gw": 300.28,
+      "ep_gain_1gw": 1.87,
+      "ep_gain_5gw": 12.52,
+      "net_ep_gain_5gw": 12.52,
+      "rationale": "Projected Mendy 18.1 vs De Cuyper 30.7 pts over the next 5 GWs (best-XI impact, not raw player comparison).",
+      "risk_notes": [
+        "De Cuyper: small_sample"
+      ],
+      "recommended": true
+    },
+    {
+      "label": "Roll transfer (make no changes)",
+      "moves": [],
+      "free_transfers_used": 0,
+      "paid_transfers": 0,
+      "points_hit": 0,
+      "resulting_bank_tenths": 133,
+      "baseline_ep_1gw": 57.37,
+      "new_ep_1gw": 57.37,
+      "baseline_ep_5gw": 287.76,
+      "new_ep_5gw": 287.76,
+      "ep_gain_1gw": 0.0,
+      "ep_gain_5gw": 0.0,
+      "net_ep_gain_5gw": 0.0,
+      "rationale": "Keeps 3 free transfer(s) available next gameweek. Always the safe default when no transfer clears the minimum recommended net gain.",
+      "risk_notes": [],
+      "recommended": false
+    }
+  ],
+  "lineups_by_strategy": {
+    "conservative": {
+      "strategy": "conservative",
+      "starting_xi": [
+        10,
+        279,
+        399,
+        68,
+        15,
+        26,
+        379,
+        572,
+        316,
+        368,
+        115
+      ],
+      "bench_order": [
+        330,
+        98,
+        586,
+        385
+      ],
+      "captain_id": 368,
+      "vice_captain_id": 279,
+      "formation": "3-4-3",
+      "total_expected_points": 66.78,
+      "total_floor_points": 47.75,
+      "total_ceiling_points": 85.24
+    },
+    "balanced": {
+      "strategy": "balanced",
+      "starting_xi": [
+        10,
+        279,
+        399,
+        68,
+        15,
+        26,
+        379,
+        572,
+        316,
+        368,
+        115
+      ],
+      "bench_order": [
+        330,
+        98,
+        586,
+        385
+      ],
+      "captain_id": 368,
+      "vice_captain_id": 279,
+      "formation": "3-4-3",
+      "total_expected_points": 66.78,
+      "total_floor_points": 47.75,
+      "total_ceiling_points": 85.24
+    },
+    "aggressive": {
+      "strategy": "aggressive",
+      "starting_xi": [
+        10,
+        330,
+        279,
+        399,
+        68,
+        15,
+        379,
+        572,
+        316,
+        368,
+        115
+      ],
+      "bench_order": [
+        26,
+        586,
+        98,
+        385
+      ],
+      "captain_id": 368,
+      "vice_captain_id": 279,
+      "formation": "4-4-2",
+      "total_expected_points": 65.99,
+      "total_floor_points": 47.33,
+      "total_ceiling_points": 86.06
+    }
+  },
+  "key_risks": [
+    "White: small_sample, injury_or_availability_doubt",
+    "Ajayi: small_sample, injury_or_availability_doubt",
+    "Cherki: small_sample",
+    "Tavernier: small_sample",
+    "\u00d8degaard: small_sample",
+    "Havertz: small_sample",
+    "Isak: small_sample",
+    "Tzolakis: small_sample",
+    "Emersonn: small_sample, injury_or_availability_doubt",
+    "Szoboszlai: small_sample"
+  ],
+  "what_would_change_this": [
+    "Late injury/suspension news on any starter or the captain before the deadline.",
+    "A confirmed change to predicted lineups (e.g. a key player ruled out in a press conference) after this report was generated.",
+    "A price change that alters what you can afford -- re-run before the deadline if it's been more than a few hours.",
+    "If the sell candidate's price rises before you act, your effective budget shrinks and this exact transfer may no longer be affordable."
+  ]
+}
