@@ -36,13 +36,28 @@ jobs:
         run: fpl-automate backtest
 
       - name: Commit updated models + backtest report
+        # Retries with a rebase on a non-fast-forward push: this can race
+        # weekly-plan.yml pushing to the same branch (either can also be
+        # run manually at any time) -- not a real conflict, since the two
+        # workflows touch disjoint files, just a rejected non-fast-forward
+        # push, so rebasing onto whatever it just pushed and retrying is safe.
         run: |
           git config user.name "fpl-automate-bot"
           git config user.email "actions@users.noreply.github.com"
           git add models/ reports/model_backtest.md reports/model_backtest.json
           if git diff --cached --quiet; then
             echo "No changes to commit."
-          else
-            git commit -m "Retrain ML projection model [skip ci]"
-            git push
+            exit 0
           fi
+          git commit -m "Retrain ML projection model [skip ci]"
+          for attempt in 1 2 3 4; do
+            if git push; then
+              exit 0
+            fi
+            echo "Push rejected (attempt $attempt/4) -- rebasing onto the current remote branch and retrying."
+            git fetch origin "$GITHUB_REF_NAME"
+            git rebase "origin/$GITHUB_REF_NAME"
+            sleep $((attempt * 3))
+          done
+          echo "::error::Could not push after 4 attempts."
+          exit 1

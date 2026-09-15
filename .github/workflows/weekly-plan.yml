@@ -53,13 +53,32 @@ jobs:
         run: fpl-automate run-weekly-plan
 
       - name: Commit updated report + decision history
+        # Retries with a rebase on a non-fast-forward push: this workflow's
+        # own concurrency group serializes its *own* runs, but not against
+        # train-model.yml, which commits to the same branch on a schedule
+        # that can land close to this one (and either can also be run
+        # manually at any time) -- a plain `git push` failing here isn't
+        # a real conflict (the two workflows touch disjoint files: reports/
+        # + data/fpl_automate.db here, models/ + reports/model_backtest.*
+        # there), just a rejected non-fast-forward push, so rebasing onto
+        # whatever the other workflow just pushed and retrying is safe.
         run: |
           git config user.name "fpl-automate-bot"
           git config user.email "actions@users.noreply.github.com"
           git add reports/ data/fpl_automate.db
           if git diff --cached --quiet; then
             echo "No changes to commit."
-          else
-            git commit -m "Weekly plan: $(date -u +'%Y-%m-%d %H:%M UTC')"
-            git push
+            exit 0
           fi
+          git commit -m "Weekly plan: $(date -u +'%Y-%m-%d %H:%M UTC')"
+          for attempt in 1 2 3 4; do
+            if git push; then
+              exit 0
+            fi
+            echo "Push rejected (attempt $attempt/4) -- rebasing onto the current remote branch and retrying."
+            git fetch origin "$GITHUB_REF_NAME"
+            git rebase "origin/$GITHUB_REF_NAME"
+            sleep $((attempt * 3))
+          done
+          echo "::error::Could not push after 4 attempts."
+          exit 1
