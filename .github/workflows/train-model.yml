@@ -1,0 +1,48 @@
+name: Train ML projection model
+
+# Fetches historical data, trains the ML model, walk-forward backtests it
+# against the hand-coded baseline and FPL's own xP, and commits the trained
+# models + backtest report -- separate from weekly-plan.yml (which runs
+# twice daily and just *uses* whatever's already committed here) so a
+# retrain doesn't happen on every single weekly-plan run. See
+# docs/ROADMAP.md "Phase 2" and src/fpl_automate/projections/ml/backtest.py.
+
+on:
+  workflow_dispatch: {}  # retrain on demand from the Actions tab
+  schedule:
+    # Weekly is plenty -- historical seasons only change once a completed
+    # season's data settles, and the in-progress season's rolling form
+    # features are recomputed live at inference time anyway (ml/live.py),
+    # not baked into this commit.
+    - cron: "0 6 * * 1"  # 06:00 UTC every Monday
+
+permissions:
+  contents: write
+
+jobs:
+  train-model:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -e .
+
+      - name: Fetch historical data, train, and backtest
+        run: fpl-automate backtest
+
+      - name: Commit updated models + backtest report
+        run: |
+          git config user.name "fpl-automate-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add models/ reports/model_backtest.md reports/model_backtest.json
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Retrain ML projection model [skip ci]"
+            git push
+          fi

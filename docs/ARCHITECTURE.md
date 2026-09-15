@@ -8,14 +8,15 @@
 | Validation | `validation/checks.py` | Refuse to proceed on missing/stale/contradictory data |
 | Storage | `storage/db.py`, `storage/models.py` | SQLite persistence (stdlib `sqlite3`, no ORM); shared typed domain models |
 | Feature engineering | `features/engineering.py` | Form shrinkage, fixture windows, minutes reliability, value |
-| Projection | `projections/baseline_model.py` | Interpretable expected/floor/ceiling points model |
+| Projection (baseline) | `projections/baseline_model.py` | Interpretable expected/floor/ceiling points model |
+| Projection (ML) | `projections/ml/` (`historical.py`, `features.py`, `model.py`, `backtest.py`, `live.py`) | Two-stage hurdle ML model: training data ingestion, leak-free feature engineering, the model itself, walk-forward backtest vs. the baseline, and live inference -- see the **Model** section in `README.md` |
 | Squad state | `squad/state.py`, `squad/valuation.py` | Current squad, bank, free transfers, chips, sell values -- all from public entry endpoints |
 | Optimisation | `optimization/lineup.py` | ILP (PuLP) for starting XI / bench / captaincy under 3 strategies |
 | Transfers | `transfers/engine.py` | Roll vs. 1/2-transfer search, hit-aware, budget/club-limit constrained |
 | Reporting | `reporting/report.py` | Assembles the weekly Markdown/JSON report |
 | Notifications | `notifications/` | Pluggable `Notifier` interface; SMTP email implementation |
 | Execution | `execution/base.py` | Inert by design -- see its module docstring |
-| Orchestration | `workflow.py` | Wires the above into `run_weekly_plan()` |
+| Orchestration | `workflow.py` | Wires the above into `run_weekly_plan()`, including `reconcile_outcomes()` (production score-tracking) |
 | CLI | `cli.py` | Typer commands, one per pipeline stage or the full run |
 | GUI | `gui/app.py`, `gui/actions.py`, `dotenv_editor.py` | Settings tab (writes .env) + Dashboard tab, over the same core logic as the CLI |
 | Shared runtime | `runtime.py`, `win_console.py` | Exe-relative path resolution and Windows console encoding, used by both frontends |
@@ -51,15 +52,25 @@ See `workflow.py::run_weekly_plan` for the literal code; in prose:
    snapshots to SQLite.
 3. Determine the last-finished gameweek (whose picks represent your current
    squad) and the next gameweek (whose deadline we're planning for).
+3a. `reconcile_outcomes()`: fill in real results for any past decision or
+    logged projection whose gameweek has since finished (see the **Model**
+    section in `README.md`, "Production score-tracking"). Best-effort and
+    never fatal -- a row it can't resolve yet (e.g. the current-season
+    archive hasn't caught up) is simply retried on the next run.
 4. Resolve squad state: picks, bank, free transfers (simulated from your
    public transfer/points history), chip usage -- from `entry/{id}/...`
    public endpoints.
-5. Compute features + baseline projections for **every** player in the
-   game at three horizons (1/3/5 gameweeks). This is cheap because the
-   baseline model only needs season-aggregate fields already present in
-   `bootstrap-static` -- no per-player extra API calls are needed for the
-   MVP model (see the module docstring in `features/engineering.py` for why
-   this matters for API politeness).
+5. Compute features + projections for **every** player in the game at
+   three horizons (1/3/5 gameweeks): the ML model wherever it covers a
+   player (`PROJECTION_MODEL=ml`, the default), the hand-built baseline
+   otherwise. Both are cheap because they only need season-aggregate
+   fields already present in `bootstrap-static` (baseline) or the
+   already-cached current-season historical archive (ML, see
+   `projections/ml/live.py`) -- no per-player extra API calls are needed
+   (see the module docstring in `features/engineering.py` for why this
+   matters for API politeness). This week's owned-squad projections are
+   also logged to SQLite here, for a future run's `reconcile_outcomes()`
+   to check against real results.
 6. Search transfer scenarios (roll; best single transfers; a greedy second
    transfer), each evaluated by actually re-running the lineup optimiser on
    the resulting squad -- so "gain" reflects real best-XI impact, not a

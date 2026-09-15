@@ -17,10 +17,14 @@ from rich.table import Table
 from fpl_automate.config import ConfigError
 from fpl_automate.logging_config import configure_logging
 from fpl_automate.optimization.lineup import optimize_lineup
+from fpl_automate.projections.ml import historical as ml_historical
+from fpl_automate.projections.ml.backtest import run_backtest_and_report
 from fpl_automate.runtime import (
     APP_BASE_DIR,
     BUNDLE_DIR,
     DEFAULT_CACHE_DIR,
+    DEFAULT_HISTORICAL_DIR,
+    DEFAULT_MODELS_DIR,
     DEFAULT_REPORTS_DIR,
     ENV_FILE_PATH,
     IS_FROZEN,
@@ -158,7 +162,9 @@ def recommend_transfers_cmd(
     squad_state = resolve_squad_state(client, settings.fpl_team_id, data.gameweeks)
     transfers_history = client.get_entry_transfers(settings.fpl_team_id)
     owned_squad = [data.players_by_id[p.element_id] for p in squad_state.picks]
-    projections = compute_projections(data, from_event=next_deadline_event)
+    projections = compute_projections(
+        data, from_event=next_deadline_event, projection_model=settings.projection_model
+    )
 
     from fpl_automate.transfers.engine import recommend_transfers as recommend_transfers_fn
 
@@ -202,7 +208,9 @@ def optimise_lineup_cmd(
 
     squad_state = resolve_squad_state(client, settings.fpl_team_id, data.gameweeks)
     owned_squad = [data.players_by_id[p.element_id] for p in squad_state.picks]
-    projections = compute_projections(data, from_event=next_deadline_event, horizons=(1,))
+    projections = compute_projections(
+        data, from_event=next_deadline_event, horizons=(1,), projection_model=settings.projection_model
+    )
 
     result = optimize_lineup(owned_squad, projections[1], strategy)  # type: ignore[arg-type]
     console.print(f"Formation: {result.formation} | Strategy: {strategy}")
@@ -254,6 +262,57 @@ def show_history(limit: int = 20) -> None:
     console.print(table)
 
 
+@app.command("show-model-performance")
+def show_model_performance() -> None:
+    """Shows the projection model's actual accuracy in production -- MAE
+    and bias between logged projections and the real points that landed,
+    for every gameweek reconciled so far (see `reconcile_outcomes` in
+    workflow.py, which runs automatically at the start of
+    `run-weekly-plan`). The live complement to the offline walk-forward
+    backtest in reports/model_backtest.md."""
+    _init()
+    settings = _get_settings()
+    db = build_db(settings)
+    rows = db.projection_performance()
+    if not rows:
+        console.print(
+            "No resolved projections yet -- run `run-weekly-plan` a few times across "
+            "gameweeks so there's something to reconcile against real results."
+        )
+        return
+
+    by_model: dict[str, list[dict]] = {}
+    for row in rows:
+        by_model.setdefault(row["model_name"], []).append(row)
+
+    table = Table(title="Live projection accuracy (per model)")
+    table.add_column("Model")
+    table.add_column("n")
+    table.add_column("MAE")
+    table.add_column("Bias (mean signed error)")
+    for model_name, model_rows in by_model.items():
+        errors = [r["expected_points"] - r["actual_points"] for r in model_rows]
+        mae = sum(abs(e) for e in errors) / len(errors)
+        bias = sum(errors) / len(errors)
+        table.add_row(model_name, str(len(model_rows)), f"{mae:.2f}", f"{bias:+.2f}")
+    console.print(table)
+
+    console.print(f"\nMost recent {min(10, len(rows))} resolved projections:")
+    recent_table = Table()
+    recent_table.add_column("GW")
+    recent_table.add_column("Model")
+    recent_table.add_column("Expected")
+    recent_table.add_column("Actual")
+    recent_table.add_column("Error")
+    for row in rows[:10]:
+        error = row["expected_points"] - row["actual_points"]
+        recent_table.add_row(
+            str(row["event"]), row["model_name"], f"{row['expected_points']:.2f}",
+            str(row["actual_points"]), f"{error:+.2f}",
+        )
+    console.print(recent_table)
+
+
 def _not_yet_implemented(feature: str, phase: str) -> None:
     console.print(
         f"[yellow]'{feature}' is not implemented yet.[/yellow] It is planned for "
@@ -261,10 +320,58 @@ def _not_yet_implemented(feature: str, phase: str) -> None:
     )
 
 
+@app.command("fetch-historical-data")
+def fetch_historical_data_cmd(
+    seasons: str = typer.Option(
+        ",".join(ml_historical.DEFAULT_SEASONS), help="Comma-separated seasons, e.g. 2021-22,2022-23"
+    ),
+) -> None:
+    """Downloads/refreshes cached historical per-season data used to train the ML model."""
+    # Deliberately not _init()/_get_settings(): fetching historical data has
+    # nothing to do with any specific user's team or FPL_TEAM_ID, and
+    # requiring it here would force e.g. train-model.yml to configure an
+    # identity it doesn't need just to train a model.
+    configure_logging()
+    season_list = [s.strip() for s in seasons.split(",") if s.strip()]
+    results = ml_historical.fetch_all_seasons(DEFAULT_HISTORICAL_DIR, seasons=season_list)
+    for season, files in results.items():
+        missing = [f for f, ok in files.items() if not ok]
+        status = "[green]OK[/green]" if not missing else f"[yellow]missing: {', '.join(missing)}[/yellow]"
+        console.print(f"{season}: {status}")
+
+
 @app.command("backtest")
-def backtest() -> None:
-    """(Planned) Walk-forward backtest of the projection model against past gameweeks."""
-    _not_yet_implemented("backtest", "Phase 2")
+def backtest_cmd(
+    seasons: str = typer.Option(
+        ",".join(ml_historical.DEFAULT_SEASONS), help="Comma-separated seasons to train/backtest on"
+    ),
+    test_season: str = typer.Option(ml_historical.TEST_SEASON, help="Held-out season to backtest against"),
+) -> None:
+    """Walk-forward backtest (docs/ROADMAP.md Phase 2): trains the ML model
+    on every season except `test_season`, evaluates it against the
+    hand-coded baseline and FPL's own xP on `test_season` (held out
+    entirely from training), and saves the trained models + calibration
+    for live use."""
+    # Same reasoning as fetch-historical-data-cmd above: no FPL_TEAM_ID needed.
+    configure_logging()
+    season_list = [s.strip() for s in seasons.split(",") if s.strip()]
+    console.print("Fetching historical data (cached files are reused if already present)...")
+    ml_historical.fetch_all_seasons(DEFAULT_HISTORICAL_DIR, seasons=season_list)
+    console.print("Training and backtesting...")
+    results = run_backtest_and_report(
+        DEFAULT_HISTORICAL_DIR,
+        DEFAULT_REPORTS_DIR,
+        seasons=season_list,
+        test_season=test_season,
+        save_models=True,
+        models_dir=DEFAULT_MODELS_DIR,
+    )
+    o = results["overall"]
+    console.print(
+        f"ML model MAE: {o['ml_model']['mae']} | Baseline MAE: {o['baseline_model']['mae']} | "
+        f"FPL xP MAE: {o['fpl_xp']['mae']}"
+    )
+    console.print(f"Full report: {DEFAULT_REPORTS_DIR / 'model_backtest.md'}")
 
 
 @app.command("bursary-search")

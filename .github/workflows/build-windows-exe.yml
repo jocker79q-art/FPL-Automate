@@ -38,6 +38,16 @@ jobs:
       - name: Build GUI with PyInstaller
         run: pyinstaller --clean --noconfirm packaging/fpl-automate-gui.spec
 
+      - name: Copy the committed trained model next to the built exe
+        # runtime.py resolves models/ (like reports/ and .env) relative to
+        # the exe's own folder, not PyInstaller's bundle -- so the ML model
+        # this repo already trains + commits (see train-model.yml) has to
+        # be placed there explicitly for the packaged exe to find it. This
+        # proves the *ML path* works end-to-end in the actual shipped exe,
+        # not just that a missing-model fallback doesn't crash.
+        shell: bash
+        run: cp -r models dist/models
+
       - name: Smoke test the CLI exe (real FPL API + real CBC solver)
         shell: bash  # bash (Git Bash, preinstalled) propagates a nonzero exe exit
         # code as a failed step; PowerShell's default `run:` shell famously does not.
@@ -51,6 +61,8 @@ jobs:
           ./dist/fpl-automate.exe run-weekly-plan
           echo "----- WEEKLY REPORT -----"
           cat dist/reports/*.md
+          echo "----- confirming the packaged exe actually used the ML model -----"
+          grep -q '"projection_model": "ml"' dist/reports/*.json
 
       - name: Smoke test the GUI exe (real window, self-closing)
         shell: bash

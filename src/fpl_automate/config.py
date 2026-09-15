@@ -7,6 +7,7 @@ loudly at startup rather than silently degrading.
 from __future__ import annotations
 
 from functools import cache
+from typing import Literal
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -27,6 +28,17 @@ class Settings(BaseSettings):
     emergency_stop: bool = False
     enable_auto_execution: bool = False
     max_transfer_risk: int = 4
+
+    # Projection model (docs/ROADMAP.md Phase 2): "ml" uses the trained
+    # two-stage hurdle model (ml/backtest.py's walk-forward backtest is
+    # what justifies this default -- see reports/model_backtest.md),
+    # falling back to the hand-coded baseline per player whenever the ML
+    # model can't cover them (no trained bundle yet, a brand-new team,
+    # etc.) or no trained model exists at all. "baseline" forces the
+    # hand-coded model only, e.g. to reproduce pre-Phase-2 behaviour or
+    # audit the two side by side. Never a *silent* switch either way --
+    # every projection's rationale states which model produced it.
+    projection_model: Literal["baseline", "ml"] = "ml"
 
     # Storage
     database_url: str = "sqlite:///data/fpl_automate.db"

@@ -1,0 +1,227 @@
+{
+  "generated_at": "2026-09-15T19:46:38.034424+00:00",
+  "seasons_trained_on": [
+    "2021-22",
+    "2022-23",
+    "2023-24",
+    "2024-25"
+  ],
+  "test_season": "2025-26",
+  "feature_columns": [
+    "total_points_roll3",
+    "minutes_roll3",
+    "starts_roll3",
+    "ict_index_roll3",
+    "influence_roll3",
+    "creativity_roll3",
+    "threat_roll3",
+    "bps_roll3",
+    "expected_goals_roll3",
+    "expected_assists_roll3",
+    "expected_goal_involvements_roll3",
+    "expected_goals_conceded_roll3",
+    "goals_scored_roll3",
+    "assists_roll3",
+    "clean_sheets_roll3",
+    "saves_roll3",
+    "bonus_roll3",
+    "total_points_roll5",
+    "minutes_roll5",
+    "starts_roll5",
+    "ict_index_roll5",
+    "influence_roll5",
+    "creativity_roll5",
+    "threat_roll5",
+    "bps_roll5",
+    "expected_goals_roll5",
+    "expected_assists_roll5",
+    "expected_goal_involvements_roll5",
+    "expected_goals_conceded_roll5",
+    "goals_scored_roll5",
+    "assists_roll5",
+    "clean_sheets_roll5",
+    "saves_roll5",
+    "bonus_roll5",
+    "total_points_roll10",
+    "minutes_roll10",
+    "starts_roll10",
+    "ict_index_roll10",
+    "influence_roll10",
+    "creativity_roll10",
+    "threat_roll10",
+    "bps_roll10",
+    "expected_goals_roll10",
+    "expected_assists_roll10",
+    "expected_goal_involvements_roll10",
+    "expected_goals_conceded_roll10",
+    "goals_scored_roll10",
+    "assists_roll10",
+    "clean_sheets_roll10",
+    "saves_roll10",
+    "bonus_roll10",
+    "value",
+    "was_home",
+    "games_played_so_far",
+    "opponent_attack_strength",
+    "opponent_defence_strength",
+    "own_attack_strength",
+    "own_defence_strength"
+  ],
+  "positions": {
+    "GK": {
+      "ml_model": {
+        "mae": 0.6114,
+        "rmse": 1.4072,
+        "n": 3427
+      },
+      "baseline_model": {
+        "mae": 0.8463,
+        "rmse": 1.5825,
+        "n": 3427
+      },
+      "fpl_xp": {
+        "mae": 0.7257,
+        "rmse": 1.8516,
+        "n": 3427
+      },
+      "naive_form": {
+        "mae": 0.6183,
+        "rmse": 1.5763,
+        "n": 3427
+      },
+      "n_train": 11882
+    },
+    "DEF": {
+      "ml_model": {
+        "mae": 1.1112,
+        "rmse": 2.1627,
+        "n": 9733
+      },
+      "baseline_model": {
+        "mae": 1.3895,
+        "rmse": 2.3143,
+        "n": 9733
+      },
+      "fpl_xp": {
+        "mae": 1.172,
+        "rmse": 2.5171,
+        "n": 9733
+      },
+      "naive_form": {
+        "mae": 1.2196,
+        "rmse": 2.3366,
+        "n": 9733
+      },
+      "n_train": 36560
+    },
+    "MID": {
+      "ml_model": {
+        "mae": 0.9496,
+        "rmse": 1.8873,
+        "n": 13310
+      },
+      "baseline_model": {
+        "mae": 1.2301,
+        "rmse": 2.064,
+        "n": 13310
+      },
+      "fpl_xp": {
+        "mae": 1.0608,
+        "rmse": 2.3386,
+        "n": 13310
+      },
+      "naive_form": {
+        "mae": 1.015,
+        "rmse": 2.0542,
+        "n": 13310
+      },
+      "n_train": 47034
+    },
+    "FWD": {
+      "ml_model": {
+        "mae": 1.1029,
+        "rmse": 2.0852,
+        "n": 3287
+      },
+      "baseline_model": {
+        "mae": 1.3606,
+        "rmse": 2.2863,
+        "n": 3287
+      },
+      "fpl_xp": {
+        "mae": 1.1645,
+        "rmse": 2.5428,
+        "n": 3287
+      },
+      "naive_form": {
+        "mae": 1.1183,
+        "rmse": 2.2653,
+        "n": 3287
+      },
+      "n_train": 13383
+    }
+  },
+  "ml_calibration": {
+    "GK": {
+      "residual_p10": -1.275,
+      "residual_p90": -0.011
+    },
+    "DEF": {
+      "residual_p10": -1.503,
+      "residual_p90": 2.75
+    },
+    "MID": {
+      "residual_p10": -1.53,
+      "residual_p90": 1.356
+    },
+    "FWD": {
+      "residual_p10": -1.873,
+      "residual_p90": 1.141
+    }
+  },
+  "overall": {
+    "ml_model": {
+      "mae": 0.9805,
+      "rmse": 1.9574,
+      "n": 29757
+    },
+    "baseline_model": {
+      "mae": 1.2524,
+      "rmse": 2.1268,
+      "n": 29757
+    },
+    "fpl_xp": {
+      "mae": 1.0701,
+      "rmse": 2.3723,
+      "n": 29757
+    },
+    "naive_form": {
+      "mae": 1.0477,
+      "rmse": 2.1275,
+      "n": 29757
+    }
+  },
+  "calibration": {
+    "overall_band_coverage": 0.081,
+    "by_confidence_bucket": [
+      {
+        "confidence_range": "0.4-0.6",
+        "n": 14834,
+        "band_coverage": 0.008,
+        "mean_confidence": 0.58
+      },
+      {
+        "confidence_range": "0.6-0.8",
+        "n": 1638,
+        "band_coverage": 0.22,
+        "mean_confidence": 0.783
+      },
+      {
+        "confidence_range": "0.8-1.0",
+        "n": 13285,
+        "band_coverage": 0.146,
+        "mean_confidence": 0.93
+      }
+    ]
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "GK": {
+    "residual_p10": -1.275,
+    "residual_p90": -0.011
+  },
+  "DEF": {
+    "residual_p10": -1.503,
+    "residual_p90": 2.75
+  },
+  "MID": {
+    "residual_p10": -1.53,
+    "residual_p90": 1.356
+  },
+  "FWD": {
+    "residual_p10": -1.873,
+    "residual_p90": 1.141
+  }
+}

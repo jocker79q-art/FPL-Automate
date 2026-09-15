@@ -45,26 +45,90 @@ total -- see "What this is not" below.
   expected value alone.
 - It does **not** trade or touch money -- Fantasy Premier League is a free
   game.
-- The projection model (`projections/baseline_model.py`) is an interpretable,
-  hand-built baseline, **not yet backtested** (see Roadmap). Trust its
-  *relative* ranking of similar players more than its absolute numbers until
-  a backtest phase validates it.
+- The interpretable, hand-built baseline (`projections/baseline_model.py`)
+  is now backtested (see **Model** below): a walk-forward comparison found
+  its floor/ceiling bands capture the real range of outcomes far less often
+  than their own stated confidence implies, and an ML model beats it on raw
+  accuracy. By default this project now uses that ML model in production
+  (see `PROJECTION_MODEL`), falling back to the baseline per player only
+  where the ML model doesn't cover them -- never a silent substitution,
+  since every projection's rationale states which one produced it.
 
 ## Architecture
 
 ```
 fetch (FPL public API) -> validate -> parse into typed models
-    -> feature engineering -> baseline expected-points model (1/3/5 GW)
+    -> [reconcile past decisions/projections against real results, see Model]
+    -> feature engineering -> expected-points model (1/3/5 GW):
+           ML model (trained + backtested, see Model) wherever it covers a
+           player, hand-built baseline otherwise
     -> squad state (bank, free transfers, chips) [public entry history]
     -> transfer engine (roll vs. 1/2 transfers, hit-aware)
     -> lineup optimiser (ILP: formation + captaincy, 3 strategies)
     -> weekly report (Markdown + JSON) -> optional email notification
-    -> decision saved to SQLite for later outcome tracking
+    -> decision + this week's projections logged to SQLite for outcome tracking
 ```
 
 Each stage is an independent module under `src/fpl_automate/` and is
 independently testable (see `tests/`). See `docs/ARCHITECTURE.md` for a
 file-by-file breakdown and the assumptions baked into each layer.
+
+## Model
+
+Two projection models exist side by side, per `docs/ROADMAP.md`'s explicit
+rule: a learned model may only be added *alongside* the hand-built baseline,
+validated by a real backtest, never as a silent replacement.
+
+- **Baseline** (`projections/baseline_model.py`): interpretable, hand-set
+  coefficients -- every number in a projection is traceable to a documented
+  assumption in that file.
+- **ML model** (`projections/ml/`): a two-stage "hurdle" model per position
+  (GK/DEF/MID/FWD) -- a classifier for P(plays this gameweek at all), and a
+  regressor for E[points | plays] trained only on rows where the player
+  played, combined as `prediction = P(plays) x E[points | plays]`. This is
+  the correct decomposition under the law of total expectation for FPL's
+  scoring (a player who doesn't play always scores exactly 0), and the
+  standard fix for zero-inflated data like this (a large spike of exact
+  zeros from an unrelated cause -- rotation/injury -- rather than "played
+  and had a bad game"). Trained on `HistGradientBoosting{Classifier,Regressor}`
+  over rolling 3/5/10-gameweek form + underlying stats (xG, xA, ICT, bps,
+  ...) + team attack/defence strength, all leak-free (rolling stats use
+  `.shift(1)` before the window, so a gameweek's features never include
+  that gameweek's own result -- see `tests/test_ml_features.py`).
+
+**Walk-forward backtest** (`fpl-automate backtest`, or the weekly
+`train-model.yml` workflow): the ML model trains on every season except the
+most recently *completed* one and is evaluated only on that held-out
+season; the baseline is scored on the exact same held-out rows by
+reconstructing, for every (player, gameweek), a point-in-time `Player`
+built only from that player's strictly-prior season-to-date stats, then
+calling the real, unmodified `baseline_model.project_player` on it -- not a
+re-derived approximation. Full methodology and current numbers:
+[reports/model_backtest.md](reports/model_backtest.md). It also checks
+calibration directly (docs/ROADMAP.md Phase 2 asks: "are floor/ceiling
+bands actually capturing the real range of outcomes?") -- on the current
+backtest, the baseline's bands captured the real outcome far less than its
+own stated confidence would suggest, a genuine finding this backtest exists
+specifically to surface, not something to paper over.
+
+**Which model runs live:** `PROJECTION_MODEL` in `.env` (default `ml`) --
+the ML model wherever it covers a player (falls back to the baseline per
+player otherwise, e.g. a brand-new team the model has no history for), or
+`baseline` to force the hand-built model only. Every `PlayerProjection`'s
+rationale states which one actually produced it, so this is never a silent
+switch either way. Live inference reuses the *current* season's own
+archive on the same public dataset the historical training data comes from
+(`ml/live.py`) -- since that archive updates gameweek by gameweek as real
+results land, it doubles as free per-gameweek rolling history for
+in-progress predictions, without hundreds of extra FPL API calls per run.
+
+**Production score-tracking**, distinct from the offline backtest above:
+every `run-weekly-plan` logs the owned squad's projections, and
+automatically reconciles past ones against real results once their
+gameweek finishes (`workflow.reconcile_outcomes`, run at the start of every
+`run-weekly-plan`). `fpl-automate show-model-performance` shows the live
+MAE/bias this has actually produced in production, gameweek by gameweek --
+the running, real-world complement to the offline backtest.
 
 ## Setup
 
@@ -91,6 +155,7 @@ All variables are documented inline in `.env.example`. Summary:
 | `EMERGENCY_STOP` | No (default false) | Master kill switch |
 | `ENABLE_AUTO_EXECUTION` | No (default false) | Reserved; currently a no-op even if true |
 | `MAX_TRANSFER_RISK` | No (default 4) | Max points-hit eligible for auto-recommendation |
+| `PROJECTION_MODEL` | No (default `ml`) | `ml` (trained model, baseline fallback per player) or `baseline` (hand-built model only) -- see **Model** |
 | `DATABASE_URL` | No | SQLite path |
 | `EMAIL_NOTIFICATIONS_ENABLED` + `SMTP_*` / `EMAIL_*` | No | Email alerts |
 
@@ -105,13 +170,16 @@ fpl-automate recommend-transfers   # ranked transfer scenarios (roll vs. 1/2 tra
 fpl-automate optimise-lineup       # best XI/bench/captaincy for your CURRENT squad
 fpl-automate run-weekly-plan       # full pipeline -> writes reports/gwN_<timestamp>.md/.json
 fpl-automate show-history          # past decisions + recorded outcomes
+fpl-automate show-model-performance  # live projection accuracy (MAE/bias) from reconciled results
+fpl-automate fetch-historical-data  # downloads/refreshes cached multi-season training data
+fpl-automate backtest               # trains + walk-forward backtests the ML model -- see Model
 ```
 
 Add `--strategy conservative|balanced|aggressive` to
 `recommend-transfers`/`optimise-lineup`/`run-weekly-plan` (default
 `balanced`).
 
-Not yet implemented (see `docs/ROADMAP.md`): `backtest`, `bursary-search`,
+Not yet implemented (see `docs/ROADMAP.md`): `bursary-search`,
 `bursary-score`, `generate-checklist` -- these exist as CLI stubs that say so
 rather than silently doing nothing.
 
@@ -170,7 +238,13 @@ a transfer.
 commits the resulting report + decision-history database back to the repo,
 so your weekly plans and their eventual outcomes are visible in git history.
 
-To enable it:
+`.github/workflows/train-model.yml` is separate and runs weekly (plus
+on-demand): it fetches historical data, retrains the ML model, walk-forward
+backtests it, and commits `models/*.joblib` + `reports/model_backtest.*` --
+deliberately not part of `weekly-plan.yml` itself, so a retrain doesn't
+happen on every single twice-daily run (see **Model** above).
+
+To enable weekly-plan.yml:
 1. Push this repo to GitHub (or use the one it's already in).
 2. Repository Settings -> Secrets and variables -> Actions:
    - **Variables**: `FPL_TEAM_ID` (e.g. `9242093`), optionally
@@ -221,20 +295,51 @@ ruff check src tests
 mypy
 ```
 
-64 tests as of this writing, covering: the FPL client's retry/cache/error
+119 tests as of this writing, covering: the FPL client's retry/cache/error
 handling (via `responses`-mocked HTTP), the data-validation gate, feature
 engineering (form shrinkage, fixture windows, minutes reliability), the
 baseline projection model (blank/double gameweeks, injury handling,
 captaincy), the lineup ILP optimiser (formation constraints, strategy-driven
 captaincy), the transfer engine (budget/club-limit enforcement, hit
 thresholds), free-transfer ledger simulation, sell-value/price-tax logic,
-and SQLite persistence.
+SQLite persistence, and the ML model layer specifically: leak-free rolling
+features (a gameweek's own result never leaks into its own features, and a
+season boundary resets rolling history even when FPL recycles element IDs),
+the hurdle model's classifier/regressor split, the walk-forward backtest
+(including a regression test that would have caught a real bug found during
+development -- a parameter name shadowing an imported function silently
+skipped saving trained models), live inference's fixture/strength handling
+and live-availability override, and automatic outcome reconciliation.
 
 ## Known limitations
 
-- **Not backtested yet.** The baseline model's coefficients are
-  hand-set and documented (see the docstring in
-  `projections/baseline_model.py`), not fitted or validated against history.
+- **The baseline's floor/ceiling bands are poorly calibrated.** The walk-
+  forward backtest found actual outcomes land inside the baseline's stated
+  band far less often than its own confidence implies (see
+  `reports/model_backtest.md`) -- a real, surfaced finding, not a hidden
+  flaw. Its hand-set coefficients otherwise remain documented in
+  `projections/baseline_model.py`.
+- **The ML model has no real-time injury/team-news signal of its own**,
+  same structural gap as the baseline without it -- it only ever sees
+  historical minutes/starts. `ml/live.py` closes this specifically for the
+  *immediate* next gameweek using FPL's own live status/chance-of-playing
+  fields (the same signal the baseline already used); it does not extend to
+  the 3/5-gameweek horizon, since current injury status says little that
+  far out.
+- **Live ML inference depends on vaastav's current-season archive being
+  up to date.** It updates gameweek by gameweek as real results land, but
+  can occasionally lag the live game by a few results -- if so, rolling
+  features for the newest gameweeks are thinner than they'll be once the
+  archive catches up (the model still runs, just with less current-season
+  history to roll over; see `games_played_so_far` and the `small_sample`
+  risk flag). Outcome reconciliation (`show-model-performance`) has the
+  same dependency and simply retries later if a gameweek's actual result
+  isn't in the archive yet.
+- **Per-gameweek historical availability/injury status and set-piece
+  order aren't in the archived training data**, so the backtest's
+  point-in-time baseline reconstruction treats every historical player as
+  fully available -- a conservative bias in the baseline's favour in that
+  comparison, not the ML model's (see `ml/backtest.py`'s docstring).
 - **Sell value can be underestimated** for players still in your very first
   squad who've never been re-bought (no purchase-price record exists via the
   public API for those) -- the fallback assumes no profit, which understates
@@ -243,19 +348,23 @@ and SQLite persistence.
   5, wildcard/free hit don't touch the ledger) and treats each chip as
   single-use for the season, matching your stated situation (wildcard
   already used) -- see the docstring in `squad/state.py`.
-- **Fixture-difficulty windows use an average**, not fixture-by-fixture
-  values, across a multi-gameweek horizon.
+- **The baseline's fixture-difficulty windows use an average**, not
+  fixture-by-fixture values, across a multi-gameweek horizon (the ML model
+  doesn't share this limitation -- it walks each gameweek in the horizon
+  individually with that gameweek's real fixture, see **Model**).
 - **The two-transfer search is greedy**, not exhaustive: it can miss a
   jointly-optimal pair that isn't optimal individually.
 - **This sandboxed development session could not reach
   fantasy.premierleague.com** (blocked by this environment's own network
-  policy) -- the full pipeline is validated with 64 mocked-data tests, but
-  you should run `fpl-automate health-check` yourself as the first real
-  connectivity check.
+  policy) -- the full pipeline is validated with 119 tests against
+  mocked/fabricated data (including the ML model scored against real,
+  fetched historical data directly, bypassing only the live FPL API call
+  itself), but you should run `fpl-automate health-check` yourself as the
+  first real connectivity check.
 
 ## Roadmap
 
-See `docs/ROADMAP.md` for the full phased plan: backtesting/walk-forward
-validation, richer ML-based projections (benchmarked against this
-baseline, not replacing it silently), a dashboard, and the bursary/
+See `docs/ROADMAP.md` for the full phased plan. Backtesting/walk-forward
+validation and an ML model benchmarked against the baseline (Phase 2) are
+now done -- see **Model** above. Remaining: a dashboard, and the bursary/
 scholarship quantitative-decision module.

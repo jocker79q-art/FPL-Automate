@@ -20,12 +20,16 @@ from fpl_automate.notifications.base import NullNotifier
 from fpl_automate.notifications.email_notifier import EmailNotifier
 from fpl_automate.optimization.lineup import Strategy, optimize_lineup
 from fpl_automate.projections.baseline_model import ModelInputs, project_player
+from fpl_automate.projections.ml import historical as ml_historical
+from fpl_automate.projections.ml.live import compute_ml_projections
+from fpl_automate.projections.ml.model import load_models
 from fpl_automate.reporting.report import (
     WeeklyReport,
     build_weekly_report,
     render_markdown,
     save_report,
 )
+from fpl_automate.runtime import DEFAULT_HISTORICAL_DIR, DEFAULT_MODELS_DIR
 from fpl_automate.squad.state import find_relevant_events, resolve_squad_state
 from fpl_automate.storage.db import Database
 from fpl_automate.storage.models import Fixture, Gameweek, Player, PlayerProjection, Team
@@ -92,10 +96,9 @@ def fetch_and_validate(client: FplClient, db: Database) -> FetchedData:
     return FetchedData(teams=teams, players=players, gameweeks=gameweeks, fixtures=fixtures)
 
 
-def compute_projections(
-    data: FetchedData, from_event: int, horizons: tuple[int, ...] = DEFAULT_HORIZONS
+def _baseline_projections(
+    data: FetchedData, from_event: int, horizons: tuple[int, ...]
 ) -> dict[int, dict[int, PlayerProjection]]:
-    """Returns {horizon_gameweeks: {player_id: PlayerProjection}}."""
     result: dict[int, dict[int, PlayerProjection]] = {}
     for horizon in horizons:
         horizon_projections: dict[int, PlayerProjection] = {}
@@ -113,6 +116,99 @@ def compute_projections(
     return result
 
 
+def compute_projections(
+    data: FetchedData,
+    from_event: int,
+    horizons: tuple[int, ...] = DEFAULT_HORIZONS,
+    projection_model: str = "ml",
+    historical_dir: Path | None = None,
+    models_dir: Path | None = None,
+) -> dict[int, dict[int, PlayerProjection]]:
+    """Returns {horizon_gameweeks: {player_id: PlayerProjection}}.
+
+    `projection_model="ml"` (the default, see Settings.projection_model)
+    uses the trained ML model wherever it covers a player, falling back
+    to the hand-coded baseline per player otherwise -- never a silent
+    substitution, since every PlayerProjection.rationale names which
+    model actually produced it. `projection_model="baseline"` skips the
+    ML model entirely, e.g. to audit the two side by side or reproduce
+    pre-Phase-2 behaviour.
+    """
+    baseline = _baseline_projections(data, from_event, horizons)
+    if projection_model != "ml":
+        return baseline
+
+    ml_result = compute_ml_projections(
+        players=data.players,
+        teams=data.teams,
+        fixtures=data.fixtures,
+        from_event=from_event,
+        horizons=horizons,
+        historical_dir=historical_dir or DEFAULT_HISTORICAL_DIR,
+        models_dir=models_dir or DEFAULT_MODELS_DIR,
+    )
+    if ml_result is None:
+        logger.info("no trained ML model found -- using the baseline model for every player")
+        return baseline
+
+    for horizon in horizons:
+        baseline[horizon].update(ml_result.get(horizon, {}))
+    return baseline
+
+
+def reconcile_outcomes(
+    client: FplClient, db: Database, team_id: int, gameweeks: list[Gameweek], historical_dir: Path
+) -> dict[str, int]:
+    """Fills in actual outcomes for past decisions and projections whose
+    gameweek has since finished -- the live complement to
+    `ml/backtest.py`'s offline walk-forward backtest, and what actually
+    makes `show-model-performance` / `show-history`'s "actual points"
+    column non-empty. Never raises on a single row it can't resolve yet
+    (e.g. vaastav's current-season archive hasn't caught up to that
+    gameweek): it just leaves that row unresolved for the next run to
+    retry, rather than failing the whole reconciliation pass.
+
+    Returns {"decisions": n_resolved, "projections": n_resolved}.
+    """
+    finished_events = [g.id for g in gameweeks if g.finished]
+    if not finished_events:
+        return {"decisions": 0, "projections": 0}
+    last_finished = max(finished_events)
+
+    resolved = {"decisions": 0, "projections": 0}
+
+    unresolved_decisions = db.unresolved_decisions(last_finished)
+    if unresolved_decisions:
+        try:
+            history = client.get_entry_history(team_id)
+            points_by_event = {g["event"]: g["points"] for g in history.get("current", [])}
+        except Exception as exc:  # noqa: BLE001 -- reconciliation is best-effort, never fatal
+            logger.warning("could not fetch entry history to reconcile decisions: %s", exc)
+            points_by_event = {}
+        for row in unresolved_decisions:
+            points = points_by_event.get(row["event"])
+            if points is None:
+                continue
+            db.record_decision_actual_points(row["id"], points)
+            resolved["decisions"] += 1
+
+    unresolved_projections = db.unresolved_projections(last_finished)
+    if unresolved_projections:
+        current_history = ml_historical.load_merged_gw(historical_dir, [ml_historical.CURRENT_SEASON])
+        actual_by_player_event: dict[tuple[int, int], int] = {}
+        if not current_history.empty:
+            for row in current_history.itertuples():
+                actual_by_player_event[(int(row.element), int(row.GW))] = int(row.total_points)
+        for row in unresolved_projections:
+            actual = actual_by_player_event.get((row["player_id"], row["event"]))
+            if actual is None:
+                continue
+            db.record_projection_actual_points(row["id"], actual)
+            resolved["projections"] += 1
+
+    return resolved
+
+
 def run_weekly_plan(
     settings: Settings, reports_dir: Path, cache_dir: Path, chosen_strategy: Strategy = "balanced"
 ) -> tuple[WeeklyReport, Path, Path]:
@@ -127,6 +223,16 @@ def run_weekly_plan(
     next_gw = next(g for g in data.gameweeks if g.id == next_deadline_event)
     validate_freshness(next_gw.deadline_time, max_age_before_deadline=timedelta(days=10))
 
+    resolved = reconcile_outcomes(
+        client, db, settings.fpl_team_id, data.gameweeks, DEFAULT_HISTORICAL_DIR
+    )
+    if resolved["decisions"] or resolved["projections"]:
+        logger.info(
+            "reconciled %d past decision(s) and %d past projection(s) with actual results",
+            resolved["decisions"],
+            resolved["projections"],
+        )
+
     squad_state = resolve_squad_state(client, settings.fpl_team_id, data.gameweeks)
     db.save_squad_snapshot(
         settings.fpl_team_id, squad_state.as_of_event, squad_state.model_dump_json()
@@ -135,7 +241,39 @@ def run_weekly_plan(
     transfers_history = client.get_entry_transfers(settings.fpl_team_id)
     owned_squad = [data.players_by_id[p.element_id] for p in squad_state.picks]
 
-    projections = compute_projections(data, from_event=next_deadline_event)
+    projections = compute_projections(
+        data, from_event=next_deadline_event, projection_model=settings.projection_model
+    )
+    # Report which model actually produced these projections, not just which
+    # one was requested -- `compute_projections` silently falls back to the
+    # baseline for everyone if no trained model exists yet, and the report
+    # should say so rather than overclaim "ml" (see docs/ROADMAP.md: never a
+    # *silent* substitution).
+    actual_projection_model = (
+        "ml" if settings.projection_model == "ml" and load_models(DEFAULT_MODELS_DIR) else "baseline"
+    )
+
+    # Log the owned squad's next-gameweek projections now, so a future run's
+    # reconcile_outcomes() can compare them to what actually happened once
+    # this gameweek finishes -- the live complement to ml/backtest.py's
+    # offline backtest. Only the owned squad (not the full player pool) to
+    # keep this lightweight; see storage/db.py's projection_log docstring.
+    db.log_projections(
+        event=next_deadline_event,
+        model_name=actual_projection_model,
+        horizon_gameweeks=1,
+        rows=[
+            {
+                "player_id": p.id,
+                "expected_points": proj.expected_points,
+                "floor_points": proj.floor_points,
+                "ceiling_points": proj.ceiling_points,
+                "confidence": proj.confidence,
+            }
+            for p in owned_squad
+            if (proj := projections[1].get(p.id)) is not None
+        ],
+    )
 
     scenarios = recommend_transfers(
         squad=owned_squad,
@@ -169,6 +307,7 @@ def run_weekly_plan(
         transfer_scenarios=scenarios,
         lineups_by_strategy=lineups_by_strategy,
         chosen_strategy=chosen_strategy,
+        projection_model=actual_projection_model,
     )
 
     md_path, json_path = save_report(report, reports_dir)

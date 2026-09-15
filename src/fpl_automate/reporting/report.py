@@ -32,6 +32,7 @@ class WeeklyReport:
     confidence: float = 0.0
     what_would_change_this: list[str] = field(default_factory=list)
     approve_state: str = "DO NOT APPROVE"
+    projection_model: str = "baseline"
 
 
 def _name(names: dict[int, str], player_id: int) -> str:
@@ -48,6 +49,7 @@ def build_weekly_report(
     transfer_scenarios: list[TransferScenario],
     lineups_by_strategy: dict[Strategy, LineupResult],
     chosen_strategy: Strategy = "balanced",
+    projection_model: str = "baseline",
 ) -> WeeklyReport:
     player_names = {pid: p.web_name for pid, p in all_players_by_id.items()}
     recommended = next((s for s in transfer_scenarios if s.recommended), transfer_scenarios[0])
@@ -109,6 +111,7 @@ def build_weekly_report(
         confidence=avg_confidence,
         what_would_change_this=what_would_change,
         approve_state=approve_state,
+        projection_model=projection_model,
     )
 
 
@@ -122,6 +125,18 @@ def render_markdown(report: WeeklyReport) -> str:
         "> This is a recommendation, not a guarantee. Expected points are a modelled "
         "estimate with a documented margin of error -- see floor/ceiling and confidence below."
     )
+    lines.append("")
+    if report.projection_model == "ml":
+        lines.append(
+            "> Projections use the trained ML model (docs/ROADMAP.md Phase 2 -- see "
+            "reports/model_backtest.md for how it was validated) wherever it covers a "
+            "player, falling back to the hand-coded baseline otherwise. Each player's "
+            "rationale (not shown in this summary) names which one produced their figure."
+        )
+    else:
+        lines.append(
+            "> Projections use the hand-coded baseline model only (PROJECTION_MODEL=baseline)."
+        )
     lines.append("")
 
     lines.append("## Decision")
@@ -217,6 +232,7 @@ def save_report(report: WeeklyReport, reports_dir: Path) -> tuple[Path, Path]:
         "gameweek": report.gameweek,
         "generated_at": report.generated_at,
         "approve_state": report.approve_state,
+        "projection_model": report.projection_model,
         "confidence": report.confidence,
         "recommended_scenario": json.loads(report.recommended_scenario.model_dump_json()),
         "transfer_scenarios": [json.loads(s.model_dump_json()) for s in report.transfer_scenarios],

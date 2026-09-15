@@ -29,6 +29,8 @@ ENV_FILE_PATH = APP_BASE_DIR / ".env"
 ENV_EXAMPLE_PATH = BUNDLE_DIR / ".env.example"
 DEFAULT_REPORTS_DIR = APP_BASE_DIR / "reports"
 DEFAULT_CACHE_DIR = APP_BASE_DIR / "data" / "cache"
+DEFAULT_MODELS_DIR = APP_BASE_DIR / "models"
+DEFAULT_HISTORICAL_DIR = APP_BASE_DIR / "data" / "historical"
 
 
 def get_app_settings() -> Settings:

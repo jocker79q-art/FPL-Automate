@@ -85,9 +85,26 @@ CREATE TABLE IF NOT EXISTS decisions (
     outcome_notes TEXT
 );
 
+CREATE TABLE IF NOT EXISTS projection_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event INTEGER NOT NULL,
+    player_id INTEGER NOT NULL,
+    model_name TEXT NOT NULL,
+    horizon_gameweeks INTEGER NOT NULL,
+    expected_points REAL NOT NULL,
+    floor_points REAL,
+    ceiling_points REAL,
+    confidence REAL,
+    logged_at REAL NOT NULL,
+    actual_points INTEGER
+);
+
 CREATE INDEX IF NOT EXISTS idx_decisions_event ON decisions(event);
 CREATE INDEX IF NOT EXISTS idx_squad_snapshots_team_event
     ON squad_snapshots(team_id, as_of_event);
+CREATE INDEX IF NOT EXISTS idx_projection_log_event ON projection_log(event);
+CREATE INDEX IF NOT EXISTS idx_projection_log_unresolved
+    ON projection_log(event) WHERE actual_points IS NULL;
 """
 
 
@@ -258,9 +275,99 @@ class Database:
                 (int(approved), actual_points, notes, decision_id),
             )
 
+    def record_decision_actual_points(self, decision_id: int, actual_points: int) -> None:
+        """Fills in just `actual_points` for a past decision, leaving
+        `approved` untouched -- unlike `record_outcome`, this is for
+        *automatic* reconciliation (see `workflow.reconcile_outcomes`),
+        which has no way to know whether the user actually followed the
+        recommendation and must never guess/overwrite that field."""
+        with self._connect() as conn:
+            conn.execute(
+                "UPDATE decisions SET actual_points = ? WHERE id = ?", (actual_points, decision_id)
+            )
+
+    def unresolved_decisions(self, up_to_event: int) -> list[dict[str, Any]]:
+        """Decisions for a gameweek that has since finished but whose
+        actual_points is still NULL -- i.e. ready to reconcile."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM decisions WHERE actual_points IS NULL AND event <= ? "
+                "ORDER BY event",
+                (up_to_event,),
+            ).fetchall()
+            return [dict(r) for r in rows]
+
     def history(self, limit: int = 20) -> list[dict[str, Any]]:
         with self._connect() as conn:
             rows = conn.execute(
                 "SELECT * FROM decisions ORDER BY created_at DESC LIMIT ?", (limit,)
             ).fetchall()
+            return [dict(r) for r in rows]
+
+    # -- per-player projection accuracy tracking --------------------------
+    #
+    # Distinct from `decisions` (whole-squad recommendation + outcome):
+    # this tracks the projection model's actual accuracy, player by
+    # player and gameweek by gameweek, in production -- the live
+    # complement to `ml/backtest.py`'s offline walk-forward backtest.
+    # Only the owned squad is logged each run (not the full ~700-player
+    # pool) to keep this lightweight and avoid unbounded DB growth.
+
+    def log_projections(
+        self, event: int, model_name: str, horizon_gameweeks: int, rows: list[dict[str, Any]]
+    ) -> None:
+        """`rows`: [{player_id, expected_points, floor_points, ceiling_points, confidence}, ...]."""
+        now = time.time()
+        with self._connect() as conn:
+            conn.executemany(
+                "INSERT INTO projection_log (event, player_id, model_name, horizon_gameweeks, "
+                "expected_points, floor_points, ceiling_points, confidence, logged_at, actual_points) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)",
+                [
+                    (
+                        event,
+                        r["player_id"],
+                        model_name,
+                        horizon_gameweeks,
+                        r["expected_points"],
+                        r.get("floor_points"),
+                        r.get("ceiling_points"),
+                        r.get("confidence"),
+                        now,
+                    )
+                    for r in rows
+                ],
+            )
+
+    def unresolved_projections(self, up_to_event: int) -> list[dict[str, Any]]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM projection_log WHERE actual_points IS NULL AND event <= ? "
+                "ORDER BY event",
+                (up_to_event,),
+            ).fetchall()
+            return [dict(r) for r in rows]
+
+    def record_projection_actual_points(self, projection_id: int, actual_points: int) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                "UPDATE projection_log SET actual_points = ? WHERE id = ?", (actual_points, projection_id)
+            )
+
+    def projection_performance(self, model_name: str | None = None) -> list[dict[str, Any]]:
+        """Resolved (actual_points filled in) rows, most recent first --
+        callers compute MAE/bias themselves (see `cli.show_model_performance_cmd`)
+        since aggregating in SQL would obscure the per-row detail a user
+        might want to inspect."""
+        with self._connect() as conn:
+            if model_name:
+                rows = conn.execute(
+                    "SELECT * FROM projection_log WHERE actual_points IS NOT NULL AND model_name = ? "
+                    "ORDER BY event DESC",
+                    (model_name,),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT * FROM projection_log WHERE actual_points IS NOT NULL ORDER BY event DESC"
+                ).fetchall()
             return [dict(r) for r in rows]

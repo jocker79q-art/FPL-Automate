@@ -5,22 +5,41 @@ analysis, hit-aware transfer recommendations, lineup optimisation, weekly
 reports, and dry-run safety by construction (no execution code exists at
 all yet).
 
-## Phase 2 -- Backtesting & model validation
+## Phase 2 -- Backtesting & model validation (done)
 
-- Walk-forward backtest: for each past gameweek, compute what the model
+- ~~Walk-forward backtest: for each past gameweek, compute what the model
   *would* have projected using only data available before that gameweek,
   compare to actual points. No future information may leak into a
-  historical prediction.
-- Track calibration: are 70%-confidence projections right about 70% of the
+  historical prediction.~~ Done: `projections/ml/backtest.py`
+  (`fpl-automate backtest`, run weekly by `train-model.yml`). The baseline
+  is scored on the exact same held-out rows via point-in-time-reconstructed
+  players and the real, unmodified `baseline_model.project_player` -- not a
+  re-derived approximation. Current numbers: `reports/model_backtest.md`.
+- ~~Track calibration: are 70%-confidence projections right about 70% of the
   time? Are floor/ceiling bands actually capturing the real range of
-  outcomes?
+  outcomes?~~ Done -- and the honest answer for the baseline, on the
+  current backtest, is "not very well" (see `reports/model_backtest.md`'s
+  calibration section): actual outcomes land inside its stated
+  floor/ceiling band far less often than its own confidence would imply.
+  A genuine finding, surfaced rather than tuned away.
 - Tune the baseline model's documented coefficients (e.g. the 55/45
   empirical/component blend, the fixture-difficulty coefficient) against
   backtest results, keeping every coefficient documented and explainable.
-- Only after a baseline backtest exists: evaluate whether a learned model
+  **Not done** -- the backtest infrastructure to do this now exists, but no
+  coefficient has actually been retuned; the baseline's numbers are still
+  its original hand-set values.
+- ~~Only after a baseline backtest exists: evaluate whether a learned model
   (gradient boosting on the same interpretable features) beats the
   baseline on held-out gameweeks. If so, ship it *alongside* the baseline
-  with an A/B comparison, not as a silent replacement.
+  with an A/B comparison, not as a silent replacement.~~ Done:
+  `projections/ml/` is a two-stage hurdle model (`HistGradientBoosting`
+  classifier + regressor), beats the baseline on the current backtest (see
+  `reports/model_backtest.md`), and is wired in as the *default* live
+  model (`PROJECTION_MODEL=ml`) with automatic per-player fallback to the
+  baseline -- never a silent substitution, since every projection's
+  rationale states which model produced it. Production score-tracking
+  (`workflow.reconcile_outcomes`, `fpl-automate show-model-performance`) is
+  the live, ongoing complement to this offline backtest.
 
 ## Phase 3 -- Notifications, richer late-news detection, dashboard
 

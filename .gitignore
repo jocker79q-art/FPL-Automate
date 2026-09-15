@@ -16,6 +16,15 @@ venv/
 # HTTP response cache is disposable.
 data/cache/
 
+# Raw historical per-season archive (ml/historical.py) used to train the ML
+# model -- large (tens of MB across seasons) and fully regenerable from
+# vaastav/Fantasy-Premier-League, so it's disposable like data/cache/.
+# models/*.joblib and models/ml_calibration.json are the OPPOSITE: small
+# (~3.5MB total), deterministic given fixed seeds + data, and needed by
+# weekly-plan.yml without retraining twice a day -- INTENTIONALLY tracked,
+# same reasoning as reports/ above.
+data/historical/
+
 # caches
 .pytest_cache/
 .mypy_cache/
