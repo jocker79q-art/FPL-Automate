@@ -1,0 +1,333 @@
+{
+  "team_id": 9242093,
+  "gameweek": 5,
+  "generated_at": "2026-09-15T19:10:40.907391+00:00",
+  "approve_state": "APPROVE",
+  "confidence": 0.89,
+  "recommended_scenario": {
+    "label": "Havertz -> Haaland, Mendy -> Gvardiol (both free)",
+    "moves": [
+      {
+        "sell_player_id": 26,
+        "buy_player_id": 411,
+        "sell_value_tenths": 75,
+        "buy_price_tenths": 155
+      },
+      {
+        "sell_player_id": 586,
+        "buy_player_id": 391,
+        "sell_value_tenths": 40,
+        "buy_price_tenths": 57
+      }
+    ],
+    "free_transfers_used": 2,
+    "paid_transfers": 0,
+    "points_hit": 0,
+    "resulting_bank_tenths": 36,
+    "baseline_ep_1gw": 77.31,
+    "new_ep_1gw": 83.53,
+    "baseline_ep_5gw": 383.49,
+    "new_ep_5gw": 408.85,
+    "ep_gain_1gw": 6.22,
+    "ep_gain_5gw": 25.36,
+    "net_ep_gain_5gw": 25.36,
+    "rationale": "Greedy 2nd transfer on top of the best single transfer found.",
+    "risk_notes": [],
+    "recommended": true
+  },
+  "transfer_scenarios": [
+    {
+      "label": "Havertz -> Haaland, Mendy -> Gvardiol (both free)",
+      "moves": [
+        {
+          "sell_player_id": 26,
+          "buy_player_id": 411,
+          "sell_value_tenths": 75,
+          "buy_price_tenths": 155
+        },
+        {
+          "sell_player_id": 586,
+          "buy_player_id": 391,
+          "sell_value_tenths": 40,
+          "buy_price_tenths": 57
+        }
+      ],
+      "free_transfers_used": 2,
+      "paid_transfers": 0,
+      "points_hit": 0,
+      "resulting_bank_tenths": 36,
+      "baseline_ep_1gw": 77.31,
+      "new_ep_1gw": 83.53,
+      "baseline_ep_5gw": 383.49,
+      "new_ep_5gw": 408.85,
+      "ep_gain_1gw": 6.22,
+      "ep_gain_5gw": 25.36,
+      "net_ep_gain_5gw": 25.36,
+      "rationale": "Greedy 2nd transfer on top of the best single transfer found.",
+      "risk_notes": [],
+      "recommended": true
+    },
+    {
+      "label": "Havertz -> Haaland (free)",
+      "moves": [
+        {
+          "sell_player_id": 26,
+          "buy_player_id": 411,
+          "sell_value_tenths": 75,
+          "buy_price_tenths": 155
+        }
+      ],
+      "free_transfers_used": 1,
+      "paid_transfers": 0,
+      "points_hit": 0,
+      "resulting_bank_tenths": 53,
+      "baseline_ep_1gw": 77.31,
+      "new_ep_1gw": 80.65,
+      "baseline_ep_5gw": 383.49,
+      "new_ep_5gw": 396.81,
+      "ep_gain_1gw": 3.34,
+      "ep_gain_5gw": 13.32,
+      "net_ep_gain_5gw": 13.32,
+      "rationale": "Projected Havertz 19.2 vs Haaland 38.7 pts over the next 5 GWs (best-XI impact, not raw player comparison).",
+      "risk_notes": [
+        "Haaland: Only 4 start(s) this season; form is shrunk towards points-per-game to avoid overweighting a small sample.",
+        "Haaland: small_sample"
+      ],
+      "recommended": true
+    },
+    {
+      "label": "Mendy -> Gvardiol (free)",
+      "moves": [
+        {
+          "sell_player_id": 586,
+          "buy_player_id": 391,
+          "sell_value_tenths": 40,
+          "buy_price_tenths": 57
+        }
+      ],
+      "free_transfers_used": 1,
+      "paid_transfers": 0,
+      "points_hit": 0,
+      "resulting_bank_tenths": 116,
+      "baseline_ep_1gw": 77.31,
+      "new_ep_1gw": 80.24,
+      "baseline_ep_5gw": 383.49,
+      "new_ep_5gw": 395.53,
+      "ep_gain_1gw": 2.93,
+      "ep_gain_5gw": 12.04,
+      "net_ep_gain_5gw": 12.04,
+      "rationale": "Projected Mendy 13.8 vs Gvardiol 36.8 pts over the next 5 GWs (best-XI impact, not raw player comparison).",
+      "risk_notes": [
+        "Gvardiol: Only 4 start(s) this season; form is shrunk towards points-per-game to avoid overweighting a small sample.",
+        "Gvardiol: small_sample"
+      ],
+      "recommended": true
+    },
+    {
+      "label": "Vuskovic -> Gvardiol (free)",
+      "moves": [
+        {
+          "sell_player_id": 504,
+          "buy_player_id": 391,
+          "sell_value_tenths": 50,
+          "buy_price_tenths": 57
+        }
+      ],
+      "free_transfers_used": 1,
+      "paid_transfers": 0,
+      "points_hit": 0,
+      "resulting_bank_tenths": 126,
+      "baseline_ep_1gw": 77.31,
+      "new_ep_1gw": 80.19,
+      "baseline_ep_5gw": 383.49,
+      "new_ep_5gw": 395.53,
+      "ep_gain_1gw": 2.88,
+      "ep_gain_5gw": 12.04,
+      "net_ep_gain_5gw": 12.04,
+      "rationale": "Projected Vuskovic 24.6 vs Gvardiol 36.8 pts over the next 5 GWs (best-XI impact, not raw player comparison).",
+      "risk_notes": [
+        "Gvardiol: Only 4 start(s) this season; form is shrunk towards points-per-game to avoid overweighting a small sample.",
+        "Gvardiol: small_sample"
+      ],
+      "recommended": true
+    },
+    {
+      "label": "Havertz -> Jo\u00e3o Pedro (free)",
+      "moves": [
+        {
+          "sell_player_id": 26,
+          "buy_player_id": 165,
+          "sell_value_tenths": 75,
+          "buy_price_tenths": 78
+        }
+      ],
+      "free_transfers_used": 1,
+      "paid_transfers": 0,
+      "points_hit": 0,
+      "resulting_bank_tenths": 130,
+      "baseline_ep_1gw": 77.31,
+      "new_ep_1gw": 79.2,
+      "baseline_ep_5gw": 383.49,
+      "new_ep_5gw": 394.73,
+      "ep_gain_1gw": 1.89,
+      "ep_gain_5gw": 11.24,
+      "net_ep_gain_5gw": 11.24,
+      "rationale": "Projected Havertz 19.2 vs Jo\u00e3o Pedro 36.6 pts over the next 5 GWs (best-XI impact, not raw player comparison).",
+      "risk_notes": [
+        "Jo\u00e3o Pedro: Only 4 start(s) this season; form is shrunk towards points-per-game to avoid overweighting a small sample.",
+        "Jo\u00e3o Pedro: small_sample"
+      ],
+      "recommended": true
+    },
+    {
+      "label": "Mendy -> De Cuyper (free)",
+      "moves": [
+        {
+          "sell_player_id": 586,
+          "buy_player_id": 115,
+          "sell_value_tenths": 40,
+          "buy_price_tenths": 48
+        }
+      ],
+      "free_transfers_used": 1,
+      "paid_transfers": 0,
+      "points_hit": 0,
+      "resulting_bank_tenths": 125,
+      "baseline_ep_1gw": 77.31,
+      "new_ep_1gw": 79.56,
+      "baseline_ep_5gw": 383.49,
+      "new_ep_5gw": 393.75,
+      "ep_gain_1gw": 2.25,
+      "ep_gain_5gw": 10.26,
+      "net_ep_gain_5gw": 10.26,
+      "rationale": "Projected Mendy 13.8 vs De Cuyper 35.0 pts over the next 5 GWs (best-XI impact, not raw player comparison).",
+      "risk_notes": [
+        "De Cuyper: Only 4 start(s) this season; form is shrunk towards points-per-game to avoid overweighting a small sample.",
+        "De Cuyper: small_sample"
+      ],
+      "recommended": true
+    },
+    {
+      "label": "Roll transfer (make no changes)",
+      "moves": [],
+      "free_transfers_used": 0,
+      "paid_transfers": 0,
+      "points_hit": 0,
+      "resulting_bank_tenths": 133,
+      "baseline_ep_1gw": 77.31,
+      "new_ep_1gw": 77.31,
+      "baseline_ep_5gw": 383.49,
+      "new_ep_5gw": 383.49,
+      "ep_gain_1gw": 0.0,
+      "ep_gain_5gw": 0.0,
+      "net_ep_gain_5gw": 0.0,
+      "rationale": "Keeps 3 free transfer(s) available next gameweek. Always the safe default when no transfer clears the minimum recommended net gain.",
+      "risk_notes": [],
+      "recommended": false
+    }
+  ],
+  "lineups_by_strategy": {
+    "conservative": {
+      "strategy": "conservative",
+      "starting_xi": [
+        330,
+        279,
+        504,
+        399,
+        69,
+        68,
+        15,
+        379,
+        572,
+        411,
+        391
+      ],
+      "bench_order": [
+        98,
+        316,
+        10,
+        385
+      ],
+      "captain_id": 330,
+      "vice_captain_id": 411,
+      "formation": "4-4-2",
+      "total_expected_points": 83.35,
+      "total_floor_points": 51.67,
+      "total_ceiling_points": 124.53
+    },
+    "balanced": {
+      "strategy": "balanced",
+      "starting_xi": [
+        330,
+        279,
+        399,
+        69,
+        68,
+        15,
+        379,
+        572,
+        316,
+        411,
+        391
+      ],
+      "bench_order": [
+        504,
+        98,
+        10,
+        385
+      ],
+      "captain_id": 330,
+      "vice_captain_id": 411,
+      "formation": "3-4-3",
+      "total_expected_points": 83.53,
+      "total_floor_points": 51.62,
+      "total_ceiling_points": 125.01
+    },
+    "aggressive": {
+      "strategy": "aggressive",
+      "starting_xi": [
+        330,
+        279,
+        399,
+        69,
+        68,
+        15,
+        379,
+        572,
+        316,
+        411,
+        391
+      ],
+      "bench_order": [
+        504,
+        98,
+        10,
+        385
+      ],
+      "captain_id": 330,
+      "vice_captain_id": 411,
+      "formation": "3-4-3",
+      "total_expected_points": 83.53,
+      "total_floor_points": 51.62,
+      "total_ceiling_points": 125.01
+    }
+  },
+  "key_risks": [
+    "Bogle: Only 4 start(s) this season; form is shrunk towards points-per-game to avoid overweighting a small sample., small_sample",
+    "Ajayi: Only 4 start(s) this season; form is shrunk towards points-per-game to avoid overweighting a small sample., small_sample",
+    "Cherki: Only 3 start(s) this season; form is shrunk towards points-per-game to avoid overweighting a small sample., small_sample",
+    "Scott: Only 4 start(s) this season; form is shrunk towards points-per-game to avoid overweighting a small sample., small_sample",
+    "Tavernier: Only 4 start(s) this season; form is shrunk towards points-per-game to avoid overweighting a small sample., small_sample",
+    "\u00d8degaard: Only 4 start(s) this season; form is shrunk towards points-per-game to avoid overweighting a small sample., small_sample",
+    "Isak: Only 4 start(s) this season; form is shrunk towards points-per-game to avoid overweighting a small sample., small_sample",
+    "Tzolakis: Only 4 start(s) this season; form is shrunk towards points-per-game to avoid overweighting a small sample., small_sample",
+    "Emersonn: Only 4 start(s) this season; form is shrunk towards points-per-game to avoid overweighting a small sample., small_sample",
+    "Haaland: Only 4 start(s) this season; form is shrunk towards points-per-game to avoid overweighting a small sample., small_sample"
+  ],
+  "what_would_change_this": [
+    "Late injury/suspension news on any starter or the captain before the deadline.",
+    "A confirmed change to predicted lineups (e.g. a key player ruled out in a press conference) after this report was generated.",
+    "A price change that alters what you can afford -- re-run before the deadline if it's been more than a few hours.",
+    "If the sell candidate's price rises before you act, your effective budget shrinks and this exact transfer may no longer be affordable."
+  ]
+}
