@@ -9,11 +9,11 @@
 | Storage | `storage/db.py`, `storage/models.py` | SQLite persistence (stdlib `sqlite3`, no ORM); shared typed domain models |
 | Feature engineering | `features/engineering.py` | Form shrinkage, fixture windows, minutes reliability, value |
 | Projection (baseline) | `projections/baseline_model.py` | Interpretable expected/floor/ceiling points model |
-| Projection (ML) | `projections/ml/` (`historical.py`, `features.py`, `model.py`, `backtest.py`, `live.py`) | Two-stage hurdle ML model: training data ingestion, leak-free feature engineering, the model itself, walk-forward backtest vs. the baseline, and live inference -- see the **Model** section in `README.md` |
-| Risk | `risk/classification.py`, `risk/portfolio.py` | Safe/balanced/risky classification from a projection's own floor/ceiling band; mean-variance risk-adjusted scoring (incl. the correct quadratic captaincy-variance formula) used by `optimization/lineup.py`'s `risk_adjusted` strategy -- see the **Risk** section in `README.md` |
+| Projection (ML) | `projections/ml/` (`historical.py`, `features.py`, `model.py`, `backtest.py`, `live.py`) | Two-stage hurdle ML model with quantile-regression floor/ceiling (`mixture_floor_ceiling`): training data ingestion, leak-free feature engineering, the model itself, walk-forward backtest vs. the baseline, and live inference -- see the **Model** section in `README.md` |
+| Risk | `risk/classification.py`, `risk/portfolio.py`, `risk/covariance.py`, `risk/validation.py` | Safe/balanced/risky classification from a projection's own floor/ceiling band; mean-variance risk-adjusted scoring (incl. the correct quadratic captaincy-variance formula) used by `optimization/lineup.py`'s `risk_adjusted` strategy; same-fixture player correlation estimated from real residuals (Ledoit-Wolf-style shrinkage) feeding a covariance-aware portfolio-variance *figure* (not yet the optimizer's own selection objective); historical validation of the risk system against realized (not projected) outcomes -- see the **Risk** section in `README.md` |
 | Squad state | `squad/state.py`, `squad/valuation.py` | Current squad, bank, free transfers, chips, sell values -- all from public entry endpoints |
 | Optimisation | `optimization/lineup.py` | ILP (PuLP) for starting XI / bench / captaincy under 4 strategies (3 single-number substitutions + `risk_adjusted`'s genuine mean-variance objective) |
-| Transfers | `transfers/engine.py` | Roll vs. 1/2-transfer search, hit-aware, budget/club-limit constrained |
+| Transfers | `transfers/engine.py`, `transfers/planning.py` | Roll vs. 1/2-transfer search, hit-aware, budget/club-limit constrained; for a single-move recommendation, a bounded lookahead over *when* to make it using real per-gameweek (not horizon-summed) projections, so a genuine fixture swing can change the recommended timing |
 | Reporting | `reporting/report.py` | Assembles the weekly Markdown/JSON report |
 | Notifications | `notifications/` | Pluggable `Notifier` interface; SMTP email implementation |
 | Execution | `execution/base.py` | Inert by design -- see its module docstring |
@@ -62,8 +62,11 @@ See `workflow.py::run_weekly_plan` for the literal code; in prose:
    public transfer/points history), chip usage -- from `entry/{id}/...`
    public endpoints.
 5. Compute features + projections for **every** player in the game at
-   three horizons (1/3/5 gameweeks): the ML model wherever it covers a
-   player (`PROJECTION_MODEL=ml`, the default), the hand-built baseline
+   every horizon from 1 to 5 gameweeks (not just 1/3/5 -- every
+   intermediate gameweek is needed so `transfers/planning.py` can recover
+   each *individual* gameweek's contribution by differencing consecutive
+   cumulative horizons): the ML model wherever it covers a player
+   (`PROJECTION_MODEL=ml`, the default), the hand-built baseline
    otherwise. Both are cheap because they only need season-aggregate
    fields already present in `bootstrap-static` (baseline) or the
    already-cached current-season historical archive (ML, see
@@ -75,11 +78,15 @@ See `workflow.py::run_weekly_plan` for the literal code; in prose:
 6. Search transfer scenarios (roll; best single transfers; a greedy second
    transfer), each evaluated by actually re-running the lineup optimiser on
    the resulting squad -- so "gain" reflects real best-XI impact, not a
-   naive player-vs-player points comparison.
+   naive player-vs-player points comparison. For a single-move
+   recommendation, `transfers/planning.py` additionally checks *when* to
+   make it (this gameweek vs. a short delay) using the real per-gameweek
+   projections from step 5.
 7. Optimise the starting XI/bench/captaincy for the resulting squad under
-   all three strategies (conservative/balanced/aggressive).
-8. Build and save the report (Markdown + JSON); log the decision to SQLite;
-   send an email if configured.
+   all four strategies (conservative/balanced/aggressive/risk_adjusted).
+8. Build and save the report (Markdown + JSON, including the covariance-
+   aware portfolio-variance figure and any transfer-timing plan); log the
+   decision to SQLite; send an email if configured.
 
 ## Testing strategy
 

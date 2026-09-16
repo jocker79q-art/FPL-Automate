@@ -13,9 +13,17 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from fpl_automate.optimization.lineup import LineupResult, Strategy
-from fpl_automate.risk.classification import RiskProfile, RiskTier, classify_squad_risk, tier_counts
-from fpl_automate.storage.models import Player, PlayerProjection, SquadState
+from fpl_automate.risk.classification import (
+    RiskProfile,
+    RiskTier,
+    classify_squad_risk,
+    estimate_std_dev,
+    tier_counts,
+)
+from fpl_automate.risk.covariance import FixtureCorrelation, PortfolioPlayer, portfolio_variance
+from fpl_automate.storage.models import Fixture, Player, PlayerProjection, SquadState
 from fpl_automate.transfers.engine import TransferScenario
+from fpl_automate.transfers.planning import TransferTimingPlan
 
 
 @dataclass
@@ -35,6 +43,55 @@ class WeeklyReport:
     approve_state: str = "DO NOT APPROVE"
     projection_model: str = "baseline"
     squad_risk_profiles: dict[int, RiskProfile] = field(default_factory=dict)
+    fixture_correlation: FixtureCorrelation = field(default_factory=FixtureCorrelation.zero)
+    starting_xi_independent_variance: float = 0.0
+    starting_xi_correlated_variance: float = 0.0
+    transfer_timing: TransferTimingPlan | None = None
+
+
+def _opponent_team_for_gameweek(fixtures: list[Fixture], team_id: int, gameweek: int) -> int | None:
+    """team_id's opponent in `gameweek`, or None for a blank gameweek. A
+    team appearing in more than one fixture that gameweek (double
+    gameweek) only keeps the first -- the same documented simplification
+    `projections/ml/live.py` uses for the same reason."""
+    for fx in fixtures:
+        if fx.event != gameweek:
+            continue
+        if fx.team_h == team_id:
+            return fx.team_a
+        if fx.team_a == team_id:
+            return fx.team_h
+    return None
+
+
+def _starting_xi_portfolio_variance(
+    starting_xi: list[int],
+    projections: dict[int, PlayerProjection],
+    all_players_by_id: dict[int, Player],
+    fixtures: list[Fixture],
+    gameweek: int,
+    correlation: FixtureCorrelation,
+) -> tuple[float, float]:
+    """Returns (independent_variance, correlation_aware_variance) for the
+    starting XI's summed points -- see `risk/covariance.py`. The
+    independent figure is what `risk/portfolio.py`'s per-player scoring
+    implicitly assumes; the correlated figure is the real, measured
+    answer wherever a correlation estimate has been computed."""
+    players = []
+    for pid in starting_xi:
+        proj = projections.get(pid)
+        player = all_players_by_id.get(pid)
+        if proj is None or player is None:
+            continue
+        opponent = _opponent_team_for_gameweek(fixtures, player.team_id, gameweek)
+        players.append(
+            PortfolioPlayer(
+                player_id=pid, sigma=estimate_std_dev(proj), team_id=player.team_id, opponent_team_id=opponent
+            )
+        )
+    independent = portfolio_variance(players, FixtureCorrelation.zero())
+    correlated = portfolio_variance(players, correlation)
+    return independent, correlated
 
 
 def _name(names: dict[int, str], player_id: int) -> str:
@@ -52,7 +109,12 @@ def build_weekly_report(
     lineups_by_strategy: dict[Strategy, LineupResult],
     chosen_strategy: Strategy = "balanced",
     projection_model: str = "baseline",
+    fixtures: list[Fixture] | None = None,
+    fixture_correlation: FixtureCorrelation | None = None,
+    transfer_timing: TransferTimingPlan | None = None,
 ) -> WeeklyReport:
+    fixtures = fixtures or []
+    fixture_correlation = fixture_correlation or FixtureCorrelation.zero()
     player_names = {pid: p.web_name for pid, p in all_players_by_id.items()}
     recommended = next((s for s in transfer_scenarios if s.recommended), transfer_scenarios[0])
 
@@ -104,6 +166,10 @@ def build_weekly_report(
     }
     squad_risk_profiles = classify_squad_risk(squad_projections)
 
+    independent_variance, correlated_variance = _starting_xi_portfolio_variance(
+        chosen_lineup.starting_xi, projections_1gw, all_players_by_id, fixtures, gameweek, fixture_correlation
+    )
+
     return WeeklyReport(
         team_id=team_id,
         gameweek=gameweek,
@@ -120,6 +186,10 @@ def build_weekly_report(
         approve_state=approve_state,
         projection_model=projection_model,
         squad_risk_profiles=squad_risk_profiles,
+        fixture_correlation=fixture_correlation,
+        starting_xi_independent_variance=independent_variance,
+        starting_xi_correlated_variance=correlated_variance,
+        transfer_timing=transfer_timing,
     )
 
 
@@ -167,6 +237,25 @@ def render_markdown(report: WeeklyReport) -> str:
     lines.append(f"- Net expected gain (5 GW, after any hit): **{r.net_ep_gain_5gw:+.2f}**")
     lines.append(f"- Rationale: {r.rationale}")
     lines.append("")
+
+    tt = report.transfer_timing
+    if tt is not None:
+        lines.append("### Transfer timing")
+        lines.append(
+            "Compares making this transfer now against delaying it, using each gameweek's "
+            "*own* projection rather than the 5-GW total above -- so a real fixture swing "
+            "(a tough game now, an easy one in a couple of weeks) can change the recommended "
+            "timing, not just the recommended player. See `transfers/planning.py` for the "
+            "documented simplification (assumes stable prices/roles while waiting)."
+        )
+        lines.append("")
+        lines.append(tt.rationale)
+        if tt.best_execute_at_offset != 0:
+            lines.append(
+                f"- Now: {tt.cumulative_gain_now:+.2f} pts captured over this window | "
+                f"Wait {tt.best_execute_at_offset} GW(s): {tt.cumulative_gain_at_best:+.2f} pts"
+            )
+        lines.append("")
 
     lines.append("## Best alternative options")
     for alt in [s for s in report.transfer_scenarios if s is not r][:4]:
@@ -252,6 +341,38 @@ def render_markdown(report: WeeklyReport) -> str:
         lines.append(f"| {_name(names, pid)} | {profile.tier.value} | {'; '.join(profile.reasons)} |")
     lines.append("")
 
+    fc = report.fixture_correlation
+    indep_sd = report.starting_xi_independent_variance**0.5
+    corr_sd = report.starting_xi_correlated_variance**0.5
+    lines.append("### Starting XI portfolio variance")
+    lines.append(
+        "`risk/portfolio.py`'s per-player risk_adjusted scoring assumes each player's "
+        "points are independent; this measures the actual starting XI's variance "
+        "accounting for same-team/same-fixture correlation (`risk/covariance.py`), which "
+        "is almost always higher once picks concentrate on one team's defence or attack."
+    )
+    lines.append("")
+    if fc.n_same_team_gameweeks > 0:
+        pct_diff = (
+            (corr_sd - indep_sd) / indep_sd * 100 if indep_sd > 0 else 0.0
+        )
+        lines.append(
+            f"- Independent-variance assumption: std dev {indep_sd:.2f} pts "
+            f"(variance {report.starting_xi_independent_variance:.2f})"
+        )
+        lines.append(
+            f"- Correlation-aware (same-team rho={fc.same_team_rho:+.2f}, opponent "
+            f"rho={fc.opponent_rho:+.2f}): std dev {corr_sd:.2f} pts "
+            f"(variance {report.starting_xi_correlated_variance:.2f}, {pct_diff:+.0f}%)"
+        )
+    else:
+        lines.append(
+            "- No fixture-correlation estimate available yet (run `fpl-automate backtest` "
+            "at least once) -- falling back to the independent-variance assumption: "
+            f"std dev {indep_sd:.2f} pts."
+        )
+    lines.append("")
+
     lines.append("## Squad state")
     lines.append(f"- Free transfers available: {report.squad_state.free_transfers_available}")
     lines.append(f"- Bank: £{report.squad_state.bank}m")
@@ -291,6 +412,27 @@ def save_report(report: WeeklyReport, reports_dir: Path) -> tuple[Path, Path]:
             str(pid): json.loads(profile.model_dump_json())
             for pid, profile in report.squad_risk_profiles.items()
         },
+        "fixture_correlation": {
+            "same_team_rho": report.fixture_correlation.same_team_rho,
+            "opponent_rho": report.fixture_correlation.opponent_rho,
+            "n_same_team_gameweeks": report.fixture_correlation.n_same_team_gameweeks,
+            "n_opponent_gameweeks": report.fixture_correlation.n_opponent_gameweeks,
+        },
+        "starting_xi_independent_variance": report.starting_xi_independent_variance,
+        "starting_xi_correlated_variance": report.starting_xi_correlated_variance,
+        "transfer_timing": (
+            {
+                "sell_player_id": report.transfer_timing.sell_player_id,
+                "buy_player_id": report.transfer_timing.buy_player_id,
+                "per_gameweek_differential": report.transfer_timing.per_gameweek_differential,
+                "best_execute_at_offset": report.transfer_timing.best_execute_at_offset,
+                "cumulative_gain_now": report.transfer_timing.cumulative_gain_now,
+                "cumulative_gain_at_best": report.transfer_timing.cumulative_gain_at_best,
+                "rationale": report.transfer_timing.rationale,
+            }
+            if report.transfer_timing is not None
+            else None
+        ),
     }
     json_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     return md_path, json_path

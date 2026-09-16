@@ -63,11 +63,41 @@ that gap concrete rather than theoretical.
   (quadratic, not linear) variance treatment for the captaincy multiplier
   specifically -- verified against a naive "just double it" alternative
   in `tests/test_risk_portfolio.py`.
-- **Not done, documented as a known limitation**: player variance is
-  treated as independent (no covariance matrix), so correlated risk
-  between players in the same match isn't modelled. Real future work --
-  would need enough same-fixture player-pair history to estimate a
-  covariance matrix reliably, which this project doesn't yet compute.
+- ~~Player variance is treated as independent (no covariance matrix), so
+  correlated risk between players in the same match isn't modelled.~~
+  **Partially done**: `risk/covariance.py` now estimates real same-team
+  and same-fixture-opponent correlation from backtest residuals (a
+  Ledoit-Wolf-style shrinkage-to-zero estimator over a pooled,
+  two-parameter structure -- see the module docstring for why a full
+  per-player-pair matrix isn't attempted), and `portfolio_variance`
+  computes a squad's *true* variance with it, surfaced in the weekly
+  report. **Still not done**: the ILP lineup *optimizer* still selects
+  players using the independent-variance objective -- a genuinely
+  covariance-aware selection needs a quadratic objective, which PuLP's
+  linear ILP solver doesn't support. The reported risk figure is honest
+  and covariance-aware; the selection algorithm is not yet.
+- ~~Does the risk-adjusted strategy's theoretical claim (lower
+  risk_aversion volatility) actually hold against real outcomes, not just
+  its own objective function?~~ Done: `risk/validation.py` runs the real
+  optimizer on synthetic squads across the held-out backtest season,
+  scored by what players *actually* scored (`reports/risk_validation.md`).
+  On the current backtest: yes, realized variance decreases monotonically
+  as `risk_aversion` increases, at a real measured cost in mean points --
+  reported honestly either way, not smoothed over if a future backtest
+  disagrees.
+- ~~Real per-player predictive uncertainty, not a single global
+  floor/ceiling offset per position.~~ Done: `ml/model.py`'s quantile
+  regressors (10th/90th percentile of E[points|plays]) plus
+  `mixture_floor_ceiling` folding P(plays) uncertainty back in --
+  measurably better calibrated than the flat-offset band it replaced (90%
+  empirical coverage vs. an 80% target, see `reports/model_backtest.md`).
+- ~~Transfer recommendations only ever say *which* player, never *when*.~~
+  Done, for single-transfer scenarios: `transfers/planning.py` compares
+  acting now against a short delay using real per-gameweek (not
+  horizon-summed) projections, so a genuine fixture swing can change the
+  recommended timing. **Not done**: multi-transfer sequences, and chip
+  (Wildcard/Free Hit/Bench Boost/Triple Captain) timing -- both real
+  future work.
 
 ## Phase 3 -- Notifications, richer late-news detection, dashboard
 

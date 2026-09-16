@@ -392,10 +392,12 @@ def backtest_cmd(
     test_season: str = typer.Option(ml_historical.TEST_SEASON, help="Held-out season to backtest against"),
 ) -> None:
     """Walk-forward backtest (docs/ROADMAP.md Phase 2): trains the ML model
-    on every season except `test_season`, evaluates it against the
-    hand-coded baseline and FPL's own xP on `test_season` (held out
-    entirely from training), and saves the trained models + calibration
-    for live use."""
+    (classifier + mean/quantile regressors) on every season except
+    `test_season`, evaluates it against the hand-coded baseline and FPL's
+    own xP on `test_season` (held out entirely from training), saves the
+    trained models for live use, estimates same-fixture player correlation
+    (`risk/covariance.py`), and validates the risk_adjusted strategy
+    against realized (not projected) outcomes (`risk/validation.py`)."""
     # Same reasoning as fetch-historical-data-cmd above: no FPL_TEAM_ID needed.
     configure_logging()
     season_list = [s.strip() for s in seasons.split(",") if s.strip()]
@@ -416,6 +418,7 @@ def backtest_cmd(
         f"FPL xP MAE: {o['fpl_xp']['mae']}"
     )
     console.print(f"Full report: {DEFAULT_REPORTS_DIR / 'model_backtest.md'}")
+    console.print(f"Risk validation report: {DEFAULT_REPORTS_DIR / 'risk_validation.md'}")
 
 
 @app.command("bursary-search")

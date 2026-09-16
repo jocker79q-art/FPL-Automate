@@ -75,8 +75,14 @@ def _fake_results(ml_mae: float, baseline_mae: float) -> dict:
             "fpl_xp": {"mae": 1.1, "rmse": 1.6, "n": 100},
             "naive_form": {"mae": 1.2, "rmse": 1.7, "n": 100},
         },
-        "ml_calibration": {"MID": {"residual_p10": -1.0, "residual_p90": 1.0}},
-        "calibration": {"overall_band_coverage": 0.5, "by_confidence_bucket": []},
+        "ml_calibration": {"overall_band_coverage": 0.6, "by_confidence_bucket": []},
+        "baseline_calibration": {"overall_band_coverage": 0.5, "by_confidence_bucket": []},
+        "fixture_correlation": {
+            "same_team_rho": 0.1,
+            "opponent_rho": -0.02,
+            "n_same_team_gameweeks": 10,
+            "n_opponent_gameweeks": 10,
+        },
     }
 
 
@@ -124,7 +130,7 @@ def _write_season(season_dir: Path, players: list[int], gameweeks: list[int]) ->
     (season_dir / "merged_gw.csv").write_text("".join(lines))
 
 
-def test_run_backtest_trains_scores_and_saves_models_and_calibration(tmp_path: Path):
+def test_run_backtest_trains_scores_and_saves_models(tmp_path: Path):
     hist_dir = tmp_path / "hist"
     _write_season(hist_dir / "2023-24", players=[1, 2, 3, 4, 5], gameweeks=[1, 2, 3, 4, 5, 6])
     _write_season(hist_dir / "2024-25", players=[1, 2, 3, 4, 5], gameweeks=[1, 2, 3, 4, 5, 6])
@@ -140,13 +146,13 @@ def test_run_backtest_trains_scores_and_saves_models_and_calibration(tmp_path: P
 
     assert "MID" in results["positions"]
     assert results["overall"]["ml_model"]["n"] > 0
-    assert 0.0 <= results["calibration"]["overall_band_coverage"] <= 1.0
+    assert 0.0 <= results["baseline_calibration"]["overall_band_coverage"] <= 1.0
+    assert 0.0 <= results["ml_calibration"]["overall_band_coverage"] <= 1.0
 
     # Regression guard for a real bug caught during development: the
     # `save_models` bool parameter once shadowed the imported `save_models`
     # function, so models were silently never written despite save_models=True.
     assert (models_dir / "MID.joblib").exists()
-    assert (models_dir / "ml_calibration.json").exists()
 
 
 def test_run_backtest_and_report_writes_report_files(tmp_path: Path):

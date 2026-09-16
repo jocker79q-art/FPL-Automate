@@ -132,7 +132,6 @@ def _train_tiny_model(models_dir: Path) -> None:
     df = pd.DataFrame(data)
     pos_model = model.fit_position_model(df)
     model.save_models({"MID": pos_model}, models_dir)
-    model.save_calibration({"MID": {"residual_p10": -1.0, "residual_p90": 1.0}}, models_dir)
 
 
 def test_compute_ml_projections_returns_none_when_no_trained_model(tmp_path: Path):

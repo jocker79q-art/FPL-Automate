@@ -70,16 +70,53 @@ def test_load_models_skips_positions_with_no_saved_bundle(tmp_path: Path):
     assert "GK" not in loaded
 
 
-def test_save_and_load_calibration_round_trip(tmp_path: Path):
-    calibration = {"GK": {"residual_p10": -1.2, "residual_p90": 0.8}}
-    model.save_calibration(calibration, tmp_path)
+def test_predict_quantiles_returns_ordered_low_high_bands():
+    train = _synthetic_training_frame()
+    pos_model = model.fit_position_model(train)
 
-    loaded = model.load_calibration(tmp_path)
-    assert loaded == calibration
+    low, high = pos_model.predict_quantiles(train)
+    assert (low.index == train.index).all()
+    assert (low <= high).all()
 
 
-def test_load_calibration_returns_empty_dict_when_never_saved(tmp_path: Path):
-    assert model.load_calibration(tmp_path) == {}
+def test_save_and_load_models_round_trip_preserves_quantile_regressors(tmp_path: Path):
+    train = _synthetic_training_frame()
+    pos_model = model.fit_position_model(train)
+    model.save_models({"GK": pos_model}, tmp_path)
+
+    loaded = model.load_models(tmp_path)["GK"]
+    original_low, original_high = pos_model.predict_quantiles(train)
+    loaded_low, loaded_high = loaded.predict_quantiles(train)
+    assert np.allclose(original_low, loaded_low)
+    assert np.allclose(original_high, loaded_high)
+
+
+class TestMixtureFloorCeiling:
+    def test_floor_is_exactly_zero_whenever_p_play_below_point_nine(self):
+        """Below p_play=0.9 the not-played point-mass alone already
+        accounts for >=10% of outcomes, so 0 is the true 10th percentile
+        regardless of the played-distribution's own low end."""
+        floor, _ = model.mixture_floor_ceiling(p_play=0.5, pgp_low=3.0, pgp_high=8.0)
+        assert floor == 0.0
+
+    def test_ceiling_is_exactly_zero_whenever_p_play_at_or_below_point_one(self):
+        _, ceiling = model.mixture_floor_ceiling(p_play=0.1, pgp_low=3.0, pgp_high=8.0)
+        assert ceiling == 0.0
+
+    def test_floor_and_ceiling_scale_with_p_play_above_the_thresholds(self):
+        floor, ceiling = model.mixture_floor_ceiling(p_play=0.95, pgp_low=2.0, pgp_high=10.0)
+        assert floor == pytest.approx(0.95 * 2.0)
+        assert ceiling == pytest.approx(0.95 * 10.0)
+
+    def test_certain_starter_band_converges_to_the_raw_quantiles(self):
+        """As p_play -> 1, both approximations become exact."""
+        floor, ceiling = model.mixture_floor_ceiling(p_play=1.0, pgp_low=2.0, pgp_high=10.0)
+        assert floor == pytest.approx(2.0)
+        assert ceiling == pytest.approx(10.0)
+
+    def test_ceiling_never_falls_below_floor(self):
+        floor, ceiling = model.mixture_floor_ceiling(p_play=0.95, pgp_low=5.0, pgp_high=1.0)
+        assert ceiling >= floor
 
 
 @pytest.mark.parametrize(

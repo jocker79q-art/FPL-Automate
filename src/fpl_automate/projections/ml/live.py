@@ -39,7 +39,7 @@ from fpl_automate.projections.ml.features import (
     build_training_frame,
     feature_columns,
 )
-from fpl_automate.projections.ml.model import POSITION_TO_CODE, load_calibration, load_models
+from fpl_automate.projections.ml.model import POSITION_TO_CODE, load_models, mixture_floor_ceiling
 from fpl_automate.storage.models import Fixture, Player, PlayerProjection, Team
 
 logger = logging.getLogger(__name__)
@@ -211,7 +211,6 @@ def compute_ml_projections(
     models = load_models(models_dir)
     if not models:
         return None
-    calibration = load_calibration(models_dir)
 
     max_horizon = max(horizons)
     gameweeks = list(range(from_event, from_event + max_horizon))
@@ -234,7 +233,7 @@ def compute_ml_projections(
     to_predict = feat[feat["is_prediction_row"].fillna(False)].copy()
     cols = feature_columns()
 
-    # gw -> player_id -> {p_play, pgp, blank}
+    # gw -> player_id -> {p_play, pgp, pgp_low, pgp_high, blank}
     gw_points: dict[int, dict[int, dict]] = {gw: {} for gw in gameweeks}
     player_position: dict[int, str] = {}
     player_games_played: dict[int, int] = {}
@@ -250,6 +249,7 @@ def compute_ml_projections(
         for gw in gameweeks:
             if gw == from_event:
                 p_play, pgp = pos_model.predict(base_X)
+                pgp_low, pgp_high = pos_model.predict_quantiles(base_X)
                 blank = group["blank_gameweek"].to_numpy()
             else:
                 overrides = _strength_overrides_for_gameweek(
@@ -260,6 +260,7 @@ def compute_ml_projections(
                 for col in [*STRENGTH_FEATURE_COLS, "was_home"]:
                     X_gw[col] = merged[col].to_numpy()
                 p_play, pgp = pos_model.predict(X_gw)
+                pgp_low, pgp_high = pos_model.predict_quantiles(X_gw)
                 blank = merged["blank_gameweek"].to_numpy()
 
             for i in range(len(group)):
@@ -267,6 +268,8 @@ def compute_ml_projections(
                 gw_points[gw][player_id] = {
                     "p_play": float(p_play.iloc[i]),
                     "pgp": float(pgp.iloc[i]),
+                    "pgp_low": float(pgp_low.iloc[i]),
+                    "pgp_high": float(pgp_high.iloc[i]),
                     "blank": bool(blank[i]),
                 }
 
@@ -285,11 +288,15 @@ def compute_ml_projections(
         overridden = False
 
         per_gw_points: dict[int, float] = {}
+        per_gw_floor: dict[int, float] = {}
+        per_gw_ceiling: dict[int, float] = {}
         from_event_p_play = 0.0
         for gw in gameweeks:
             entry = gw_points[gw].get(player_id)
             if entry is None or entry["blank"]:
                 per_gw_points[gw] = 0.0
+                per_gw_floor[gw] = 0.0
+                per_gw_ceiling[gw] = 0.0
                 continue
             p_play = entry["p_play"]
             if gw == from_event:
@@ -297,6 +304,9 @@ def compute_ml_projections(
                 overridden = chance is not None or status in CLEARLY_OUT_STATUSES
                 from_event_p_play = p_play
             per_gw_points[gw] = p_play * entry["pgp"]
+            per_gw_floor[gw], per_gw_ceiling[gw] = mixture_floor_ceiling(
+                p_play, entry["pgp_low"], entry["pgp_high"]
+            )
 
         gw1_entry = gw_points[from_event].get(player_id)
         blank_gw1 = gw1_entry is None or gw1_entry["blank"]
@@ -316,14 +326,25 @@ def compute_ml_projections(
         if not blank_gw1 and confidence < 0.5:
             risk_flags.append("rotation_risk")
 
-        band = calibration.get(position, {"residual_p10": 0.0, "residual_p90": 0.0})
-
         for horizon in horizons:
             included_gws = gameweeks[:horizon]
             expected = round(sum(per_gw_points[gw] for gw in included_gws), 2)
             n_gws = len(included_gws)
-            floor_pts = round(max(0.0, expected + n_gws * band["residual_p10"]), 2)
-            ceiling_pts = round(max(floor_pts, expected + n_gws * band["residual_p90"]), 2)
+            # Per-gameweek floor/ceiling (each already this player's own
+            # quantile-regression-derived band for that gameweek, via
+            # mixture_floor_ceiling) summed across the horizon -- a
+            # standard band approximation for a multi-period sum, same
+            # spirit as summing per-gameweek expected points.
+            floor_pts = round(sum(per_gw_floor[gw] for gw in included_gws), 2)
+            ceiling_pts = round(sum(per_gw_ceiling[gw] for gw in included_gws), 2)
+            # The mean regressor and the two quantile regressors are fit
+            # independently, so on rare rows their predictions can
+            # disagree enough that the summed band doesn't contain the
+            # summed point estimate; widen the band to guarantee
+            # floor <= expected <= ceiling rather than report a band that
+            # doesn't bracket its own headline number.
+            floor_pts = min(floor_pts, expected)
+            ceiling_pts = max(ceiling_pts, expected)
             result[horizon][player_id] = PlayerProjection(
                 player_id=player_id,
                 gameweek=horizon,
@@ -335,7 +356,9 @@ def compute_ml_projections(
                 rationale=(
                     f"ML model (two-stage hurdle): p(plays GW{from_event})={confidence:.2f}, "
                     f"summed over {n_gws} gameweek(s) from real per-gameweek fixtures "
-                    f"(not the baseline's average-difficulty simplification)."
+                    f"(not the baseline's average-difficulty simplification). Floor/ceiling "
+                    f"from this player's own quantile-regression band, not a position-wide "
+                    f"average."
                 ),
             )
 

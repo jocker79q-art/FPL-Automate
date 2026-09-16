@@ -29,17 +29,24 @@ from fpl_automate.reporting.report import (
     render_markdown,
     save_report,
 )
+from fpl_automate.risk.covariance import load_correlation
 from fpl_automate.runtime import DEFAULT_HISTORICAL_DIR, DEFAULT_MODELS_DIR
 from fpl_automate.squad.state import find_relevant_events, resolve_squad_state
 from fpl_automate.storage.db import Database
 from fpl_automate.storage.models import Fixture, Gameweek, Player, PlayerProjection, Team
 from fpl_automate.transfers.engine import recommend_transfers
+from fpl_automate.transfers.planning import plan_transfer_timing
 from fpl_automate.validation.checks import validate_bootstrap_static, validate_freshness
 
 logger = logging.getLogger(__name__)
 
 STRATEGIES: tuple[Strategy, ...] = ("conservative", "balanced", "aggressive", "risk_adjusted")
-DEFAULT_HORIZONS = (1, 3, 5)
+# Every intermediate gameweek 1..5, not just (1, 3, 5): transfers/planning.py
+# needs every individual gameweek's contribution (recovered by differencing
+# consecutive cumulative horizons), not just the three summary horizons the
+# rest of the report uses.
+DEFAULT_HORIZONS = (1, 2, 3, 4, 5)
+TRANSFER_TIMING_HORIZON = 5
 
 
 def build_client(settings: Settings, cache_dir: Path) -> FplClient:
@@ -289,6 +296,16 @@ def run_weekly_plan(
     )
     recommended = next((s for s in scenarios if s.recommended), scenarios[0])
 
+    transfer_timing = None
+    if len(recommended.moves) == 1:
+        move = recommended.moves[0]
+        transfer_timing = plan_transfer_timing(
+            sell_player_id=move.sell_player_id,
+            buy_player_id=move.buy_player_id,
+            projections_by_horizon=projections,
+            horizon=TRANSFER_TIMING_HORIZON,
+        )
+
     resulting_squad = list(owned_squad)
     for move in recommended.moves:
         resulting_squad = [p for p in resulting_squad if p.id != move.sell_player_id]
@@ -310,6 +327,9 @@ def run_weekly_plan(
         lineups_by_strategy=lineups_by_strategy,
         chosen_strategy=chosen_strategy,
         projection_model=actual_projection_model,
+        fixtures=data.fixtures,
+        fixture_correlation=load_correlation(DEFAULT_MODELS_DIR),
+        transfer_timing=transfer_timing,
     )
 
     md_path, json_path = save_report(report, reports_dir)

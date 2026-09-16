@@ -96,6 +96,19 @@ validated by a real backtest, never as a silent replacement.
   `.shift(1)` before the window, so a gameweek's features never include
   that gameweek's own result -- see `tests/test_ml_features.py`).
 
+**Per-player uncertainty via quantile regression** (`ml/model.py`): floor
+and ceiling come from two extra `HistGradientBoostingRegressor`s per
+position trained with `loss="quantile"` at the 10th/90th percentile of
+E[points | plays] -- each *player's own* predicted spread, conditioned on
+their own features, not a single flat offset applied to every player at a
+position the way the model used to work. `mixture_floor_ceiling` then
+folds P(plays) back in on top: a player who might not start at all has a
+very different low end to their outcome distribution than a nailed
+starter, and the floor is provably exact (not an approximation) whenever
+P(plays) < 0.9, since the not-played probability mass alone already
+accounts for the bottom 10% -- see the function's docstring for the full
+derivation.
+
 **Walk-forward backtest** (`fpl-automate backtest`, or the weekly
 `train-model.yml` workflow): the ML model trains on every season except the
 most recently *completed* one and is evaluated only on that held-out
@@ -107,9 +120,18 @@ re-derived approximation. Full methodology and current numbers:
 [reports/model_backtest.md](reports/model_backtest.md). It also checks
 calibration directly (docs/ROADMAP.md Phase 2 asks: "are floor/ceiling
 bands actually capturing the real range of outcomes?") -- on the current
-backtest, the baseline's bands captured the real outcome far less than its
-own stated confidence would suggest, a genuine finding this backtest exists
-specifically to surface, not something to paper over.
+backtest, the ML model's quantile-regression band captures the real
+outcome **90%** of the time (nominally an 80% interval, so a bit
+conservative -- and it degrades toward that 80% target exactly as
+P(plays) approaches 1, matching the math), while the baseline's bands
+captured the real outcome far less than its own stated confidence would
+suggest -- both genuine findings this backtest exists specifically to
+surface, not something to paper over.
+
+**Same-fixture player correlation** (`risk/covariance.py`, same
+`backtest` command): measures, from real backtest residuals, whether
+players on the same team (or facing each other) actually move together --
+see **Risk** below for what this feeds into.
 
 **Which model runs live:** `PROJECTION_MODEL` in `.env` (default `ml`) --
 the ML model wherever it covers a player (falls back to the baseline per
@@ -169,18 +191,67 @@ volatile captaincy picks by a factor of 3, and this optimizer can (and,
 verified against real data, does) pick a different captain than
 `balanced` even when the two strategies choose an identical starting XI.
 
-Documented, honest simplification (see `risk/portfolio.py`'s docstring):
-player variances are treated as independent, so a squad's total variance
-is just the sum of its players' variances -- real players are correlated
-(two from the same match share outcome risk), and a covariance-aware
-version would need a covariance matrix this project doesn't yet estimate
-from historical results (real future work, not attempted here). At very
-high `risk_aversion` the quadratic captaincy penalty can concentrate the
-optimizer on an oddly "boring" pick (e.g. a nailed but low-ceiling
-goalkeeper) over a much higher-scoring attacker -- correct minimum-variance
-behaviour at that extreme, not a bug, but a sign the dial is set higher
-than most managers would actually want; the default (`1.0`) does not do
-this on real data (verified in the checks above).
+**Covariance-aware risk reporting** (`risk/covariance.py`): the paragraph
+above describes a documented independent-variance simplification --
+`risk_adjusted_score`/`captain_marginal_score` treat each player's points
+as uncorrelated with every other player's. This module measures the real
+answer instead of assuming it: from actual backtest residuals, it
+estimates two pooled correlations -- same-team and same-fixture-opposing-
+team -- using a Ledoit-Wolf-style shrinkage-to-zero estimator (a
+structured, two-parameter target, since any *specific* pair of players
+shares far too little co-appearance history to estimate a pairwise
+correlation individually; see the module docstring for the full
+derivation). `portfolio_variance` then computes a starting XI's *true*
+variance accounting for this, surfaced in the weekly report's "Starting
+XI portfolio variance" section alongside the naive independent-sum figure
+for comparison. On the current backtest: same-team rho is small but
+positive, opponent rho small and negative -- both directionally exactly
+what you'd expect, and modest in size because the ML model's own features
+already absorb most of the team-level signal (full numbers:
+[reports/model_backtest.md](reports/model_backtest.md)). **What this does
+NOT yet do**: the ILP lineup optimizer still *selects* players using the
+independent-variance objective above -- a genuinely covariance-aware
+*selection* would need a quadratic (not linear) objective, which PuLP's
+ILP solver doesn't support; the reported risk figure is honest and
+covariance-aware, the selection algorithm is not yet (see
+docs/ROADMAP.md).
+
+**Does any of this actually work? Validated against real outcomes**
+(`risk/validation.py`, same `backtest` command,
+[reports/risk_validation.md](reports/risk_validation.md)): every claim
+above is about the *objective being optimised*, which is not automatically
+the same as *realized* variance reduction. This runs the real,
+unmodified `optimize_lineup` on a synthetic top-N squad for every
+held-out gameweek under `balanced` and `risk_adjusted` at several
+`risk_aversion` levels, then scores each by what those players **actually**
+scored (never the projection). On the current backtest: realized std dev
+decreases *monotonically* as `risk_aversion` increases (13.4 -> 11.6
+points), at a real, measured cost in mean points (-4.2) -- exactly the
+risk/return trade-off mean-variance theory predicts, not just internally
+consistent math. Reported honestly either way: if a future backtest shows
+a non-monotonic result, the report says so rather than smoothing it over.
+
+**Transfer timing, not just transfer choice** (`transfers/planning.py`):
+`recommend-transfers`/`run-weekly-plan` already pick *which* transfer to
+make; for a single-move recommendation, `plan_transfer_timing` also asks
+*when*. It uses genuine per-gameweek projections (not the 5-GW total --
+recovered by differencing consecutive cumulative horizons, since the
+pipeline now requests every horizon 1-5, not just 1/3/5) to check whether
+the buy candidate's near-term fixture is unusually weak compared to the
+sell candidate's, reversing later in the window -- a real fixture swing,
+not a static "always transfer now" policy. A bounded lookahead (at most 5
+options evaluated), not a full multi-period optimizer over transfer
+*sequences* -- see the module docstring for the documented
+simplifications (stable prices/roles while waiting; single-transfer
+scenarios only). Shown as a "Transfer timing" subsection under the
+recommended action whenever it applies.
+
+At very high `risk_aversion` the quadratic captaincy penalty can
+concentrate the optimizer on an oddly "boring" pick (e.g. a nailed but
+low-ceiling goalkeeper) over a much higher-scoring attacker -- correct
+minimum-variance behaviour at that extreme, not a bug, but a sign the
+dial is set higher than most managers would actually want; the default
+(`1.0`) does not do this on real data (verified in the checks above).
 
 ## Setup
 
@@ -350,7 +421,7 @@ ruff check src tests
 mypy
 ```
 
-147 tests as of this writing, covering: the FPL client's retry/cache/error
+181 tests as of this writing, covering: the FPL client's retry/cache/error
 handling (via `responses`-mocked HTTP), the data-validation gate, feature
 engineering (form shrinkage, fixture windows, minutes reliability), the
 baseline projection model (blank/double gameweeks, injury handling,
@@ -361,14 +432,26 @@ tagging), free-transfer ledger simulation, sell-value/price-tax logic,
 SQLite persistence, the risk classification/mean-variance layer (tier
 overrides from qualitative risk flags, the quadratic captaincy-variance
 formula verified against a naive "just double it" implementation), report
-rendering, and the ML model layer specifically: leak-free rolling
+rendering (including the covariance-aware portfolio-variance and transfer-
+timing sections), and the ML model layer specifically: leak-free rolling
 features (a gameweek's own result never leaks into its own features, and a
 season boundary resets rolling history even when FPL recycles element IDs),
-the hurdle model's classifier/regressor split, the walk-forward backtest
-(including a regression test that would have caught a real bug found during
-development -- a parameter name shadowing an imported function silently
-skipped saving trained models), live inference's fixture/strength handling
-and live-availability override, and automatic outcome reconciliation.
+the hurdle model's classifier/regressor split, the quantile regressors and
+the mixture floor/ceiling math (exact-floor and zero-ceiling edge cases
+specifically), the walk-forward backtest (including a regression test that
+would have caught a real bug found during development -- a parameter name
+shadowing an imported function silently skipped saving trained models),
+live inference's fixture/strength handling and live-availability override,
+automatic outcome reconciliation, the fixture-correlation shrinkage
+estimator (a synthetic shared-shock construction with a known true
+correlation, to verify the estimator actually recovers it), the historical
+risk-validation module (a real "risky captain busts" scenario run through
+the actual ILP optimizer end to end, not just the isolated scoring
+formula -- this is also where a real bug was caught: `render_risk_
+validation_markdown`'s monotonicity check used `zip(..., strict=True)` on
+two lists that necessarily differ in length by one, which would have
+crashed on every real run), and the transfer-timing planner (differencing
+correctness, a genuine fixture-swing case, and tie-breaking).
 
 ## Known limitations
 
@@ -413,14 +496,33 @@ and live-availability override, and automatic outcome reconciliation.
   individually with that gameweek's real fixture, see **Model**).
 - **The two-transfer search is greedy**, not exhaustive: it can miss a
   jointly-optimal pair that isn't optimal individually.
-- **The mean-variance optimizer assumes independent player variance**
-  (no covariance matrix) -- see **Risk** above; a correlated (same-match)
-  version is real future work, not attempted here.
+- **The mean-variance optimizer's *selection* algorithm still assumes
+  independent player variance** (no covariance matrix) -- `risk/
+  covariance.py` now measures the real same-team/opponent correlation and
+  reports a genuinely covariance-aware portfolio-variance *figure*, but
+  the ILP lineup optimizer itself still *picks* the XI using the
+  independent-variance objective, since a covariance-aware selection would
+  need a quadratic (not linear) objective PuLP's ILP solver doesn't
+  support -- see **Risk** above.
+- **The fixture-correlation model is a pooled, two-parameter structure**
+  (one same-team rho, one opponent rho, shared league-wide), not a full
+  per-player-pair covariance matrix -- deliberate, since any specific pair
+  of players shares far too little co-appearance history to estimate
+  individually (see `risk/covariance.py`'s docstring). A factor model
+  conditioning on position (e.g. defenders' clean-sheet correlation
+  modelled separately from attackers' goal-involvement correlation) is
+  real future work, not attempted here.
+- **Transfer timing only reasons about single-transfer scenarios and a
+  short lookahead window**, and assumes stable prices/roles while waiting
+  (`transfers/planning.py`) -- it does not plan sequences of transfers
+  across multiple future gameweeks, and doesn't account for chip timing
+  (Wildcard/Free Hit/Bench Boost/Triple Captain).
 - **This sandboxed development session could not reach
   fantasy.premierleague.com** (blocked by this environment's own network
-  policy) -- the full pipeline is validated with 147 tests against
-  mocked/fabricated data (including the ML model and the risk-adjusted
-  optimizer both exercised against real, fetched historical/current-season
+  policy) -- the full pipeline is validated with 181 tests against
+  mocked/fabricated data (including the ML model, the risk-adjusted
+  optimizer, the covariance/validation modules, and the transfer-timing
+  planner all exercised against real, fetched historical/current-season
   data directly, bypassing only the live FPL API call itself), but you
   should run `fpl-automate health-check` yourself as the first real
   connectivity check.

@@ -29,6 +29,7 @@ from __future__ import annotations
 import itertools
 import json
 import logging
+from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -46,9 +47,15 @@ from fpl_automate.projections.ml.features import (
     build_training_frame,
     feature_columns,
 )
-from fpl_automate.projections.ml.model import POSITIONS, fit_position_model
-from fpl_automate.projections.ml.model import save_calibration as persist_calibration
+from fpl_automate.projections.ml.model import POSITIONS, fit_position_model, mixture_floor_ceiling
 from fpl_automate.projections.ml.model import save_models as persist_models
+from fpl_automate.risk.covariance import estimate_fixture_correlation
+from fpl_automate.risk.covariance import save_correlation as persist_correlation
+from fpl_automate.risk.validation import (
+    StrategyValidation,
+    render_risk_validation_markdown,
+    run_risk_validation,
+)
 from fpl_automate.storage.models import AvailabilityStatus, Fixture, Player, Position, Team
 
 logger = logging.getLogger(__name__)
@@ -109,7 +116,7 @@ def _build_fixtures(historical_dir: Path, season: str) -> list[Fixture]:
     return fixtures
 
 
-def _row_to_player(row, team_name_to_id: dict[str, int]) -> Player | None:
+def row_to_player(row, team_name_to_id: dict[str, int]) -> Player | None:
     position = CODE_TO_POSITION.get(row.position)
     team_id = team_name_to_id.get(row.team)
     if position is None or team_id is None:
@@ -166,7 +173,7 @@ def _backtest_baseline(
     confidence = np.zeros(n)
 
     for i, row in enumerate(test_df.itertuples()):
-        player = _row_to_player(row, team_name_to_id)
+        player = row_to_player(row, team_name_to_id)
         if player is None:
             continue
         team = teams.get(player.team_id)
@@ -243,7 +250,10 @@ def run_backtest(
         "positions": {},
     }
     overall: dict[str, list[np.ndarray]] = {"y": [], "ml": [], "baseline": [], "xp": [], "naive": []}
-    calibration_inputs: dict[str, list[np.ndarray]] = {
+    baseline_calibration_inputs: dict[str, list[np.ndarray]] = {
+        "actual": [], "floor": [], "ceiling": [], "confidence": []
+    }
+    ml_calibration_inputs: dict[str, list[np.ndarray]] = {
         "actual": [], "floor": [], "ceiling": [], "confidence": []
     }
 
@@ -251,8 +261,10 @@ def run_backtest(
         models_dir = models_dir or (historical_dir.parent / "models")
         models_dir.mkdir(parents=True, exist_ok=True)
 
+    team_name_to_id = {t.name: tid for tid, t in _build_teams(historical_dir, test_season).items()}
+    full_test_frames: list[pd.DataFrame] = []
+
     fitted_models = {}
-    calibration: dict[str, dict[str, float]] = {}
     for position in POSITIONS:
         pos_train = train_df[train_df["position"] == position]
         pos_test = test_df[test_df["position"] == position].reset_index(drop=True)
@@ -262,16 +274,21 @@ def run_backtest(
 
         pos_model = fit_position_model(pos_train)
         fitted_models[position] = pos_model
-        ml_preds = pos_model.predict_points(pos_test).to_numpy()
+        ml_p_play, ml_pgp = pos_model.predict(pos_test)
+        ml_preds = (ml_p_play * ml_pgp).to_numpy()
+        ml_pgp_low, ml_pgp_high = pos_model.predict_quantiles(pos_test)
+        ml_floor_ceiling = [
+            mixture_floor_ceiling(p, lo, hi)
+            for p, lo, hi in zip(ml_p_play, ml_pgp_low, ml_pgp_high, strict=True)
+        ]
+        ml_floor = np.array([f for f, _ in ml_floor_ceiling])
+        ml_ceiling = np.array([c for _, c in ml_floor_ceiling])
 
         baseline_preds, floor, ceiling, confidence = _backtest_baseline(
             pos_test, historical_dir, test_season
         )
 
         y_test = pos_test[TARGET_COL].to_numpy()
-        residuals = y_test - ml_preds
-        p10, p90 = np.percentile(residuals, [10, 90])
-        calibration[position] = {"residual_p10": round(float(p10), 3), "residual_p90": round(float(p90), 3)}
 
         results["positions"][position] = {
             "ml_model": _metrics(y_test, ml_preds),
@@ -286,15 +303,43 @@ def run_backtest(
         overall["baseline"].append(baseline_preds)
         overall["xp"].append(pos_test[BASELINE_COL].to_numpy())
         overall["naive"].append(pos_test[NAIVE_FORM_COL].to_numpy())
-        calibration_inputs["actual"].append(y_test)
-        calibration_inputs["floor"].append(floor)
-        calibration_inputs["ceiling"].append(ceiling)
-        calibration_inputs["confidence"].append(confidence)
+        baseline_calibration_inputs["actual"].append(y_test)
+        baseline_calibration_inputs["floor"].append(floor)
+        baseline_calibration_inputs["ceiling"].append(ceiling)
+        baseline_calibration_inputs["confidence"].append(confidence)
+        ml_calibration_inputs["actual"].append(y_test)
+        ml_calibration_inputs["floor"].append(ml_floor)
+        ml_calibration_inputs["ceiling"].append(ml_ceiling)
+        ml_calibration_inputs["confidence"].append(ml_p_play.to_numpy())
+
+        full_test_frames.append(
+            pos_test.copy().assign(ml_pred=ml_preds, ml_floor=ml_floor, ml_ceiling=ml_ceiling, actual=y_test)
+        )
 
     if save_models:
         persist_models(fitted_models, models_dir)  # type: ignore[arg-type]
-        persist_calibration(calibration, models_dir)  # type: ignore[arg-type]
-    results["ml_calibration"] = calibration
+
+    full_test_df = pd.concat(full_test_frames, ignore_index=True)
+
+    correlation_input = pd.DataFrame(
+        {
+            "season": full_test_df["season"],
+            "GW": full_test_df["GW"],
+            "position": full_test_df["position"],
+            "team_id": full_test_df["team"].map(team_name_to_id),
+            "opponent_team_id": full_test_df["opponent_team"],
+            "residual": full_test_df["actual"] - full_test_df["ml_pred"],
+        }
+    ).dropna(subset=["team_id", "opponent_team_id"])
+    fixture_correlation = estimate_fixture_correlation(correlation_input)
+    if save_models:
+        persist_correlation(fixture_correlation, models_dir)  # type: ignore[arg-type]
+    results["fixture_correlation"] = {
+        "same_team_rho": fixture_correlation.same_team_rho,
+        "opponent_rho": fixture_correlation.opponent_rho,
+        "n_same_team_gameweeks": fixture_correlation.n_same_team_gameweeks,
+        "n_opponent_gameweeks": fixture_correlation.n_opponent_gameweeks,
+    }
 
     overall_y = np.concatenate(overall["y"])
     results["overall"] = {
@@ -303,12 +348,21 @@ def run_backtest(
         "fpl_xp": _metrics(overall_y, np.concatenate(overall["xp"])),
         "naive_form": _metrics(overall_y, np.concatenate(overall["naive"])),
     }
-    results["calibration"] = _calibration_report(
-        np.concatenate(calibration_inputs["actual"]),
-        np.concatenate(calibration_inputs["floor"]),
-        np.concatenate(calibration_inputs["ceiling"]),
-        np.concatenate(calibration_inputs["confidence"]),
+    results["baseline_calibration"] = _calibration_report(
+        np.concatenate(baseline_calibration_inputs["actual"]),
+        np.concatenate(baseline_calibration_inputs["floor"]),
+        np.concatenate(baseline_calibration_inputs["ceiling"]),
+        np.concatenate(baseline_calibration_inputs["confidence"]),
     )
+    results["ml_calibration"] = _calibration_report(
+        np.concatenate(ml_calibration_inputs["actual"]),
+        np.concatenate(ml_calibration_inputs["floor"]),
+        np.concatenate(ml_calibration_inputs["ceiling"]),
+        np.concatenate(ml_calibration_inputs["confidence"]),
+    )
+
+    risk_validation = run_risk_validation(full_test_df, team_name_to_id)
+    results["risk_validation"] = [asdict(v) for v in risk_validation]
 
     return results
 
@@ -378,21 +432,38 @@ def render_report_markdown(results: dict) -> str:
         )
     lines.append("")
 
+    ml_cal = results["ml_calibration"]
     lines += [
-        "## ML model calibration: empirical residual quantiles",
+        "## ML model calibration: does the quantile-regression band capture reality?",
         "",
-        "Used at inference time to turn a point prediction into a floor/ceiling",
-        "band (`expected + residual_p10` / `expected + residual_p90`) -- real",
-        "observed error spread from this backtest, not an arbitrary heuristic:",
+        (
+            "Floor/ceiling come from per-player quantile regression (10th/90th "
+            "percentile of E[points|plays], `ml/model.py`'s `predict_quantiles`) "
+            "combined with the hurdle model's own P(plays) via `mixture_floor_ceiling` "
+            "-- a real per-player band, not a single global offset applied to every "
+            "player at a position."
+        ),
         "",
-        "| Position | Residual p10 | Residual p90 |",
-        "|---|---|---|",
+        (
+            f"Overall: actual points fell inside the ML model's [floor, ceiling] band "
+            f"**{ml_cal['overall_band_coverage']:.0%}** of the time (target: ~80%, since "
+            "this is nominally an 80% central interval)."
+        ),
+        "",
+        "By P(plays) used for that gameweek (bucketed the same way as the",
+        "baseline's confidence below, for direct comparison):",
+        "",
+        "| P(plays) range | n | Band coverage | Mean P(plays) |",
+        "|---|---|---|---|",
     ]
-    for position, c in results["ml_calibration"].items():
-        lines.append(f"| {position} | {c['residual_p10']:+.2f} | {c['residual_p90']:+.2f} |")
+    for bucket in ml_cal["by_confidence_bucket"]:
+        lines.append(
+            f"| {bucket['confidence_range']} | {bucket['n']} | {bucket['band_coverage']:.0%} | "
+            f"{bucket['mean_confidence']:.2f} |"
+        )
     lines.append("")
 
-    cal = results["calibration"]
+    cal = results["baseline_calibration"]
     lines += [
         "## Baseline calibration: does the floor/ceiling band capture reality?",
         "",
@@ -413,6 +484,36 @@ def render_report_markdown(results: dict) -> str:
             f"{bucket['mean_confidence']:.2f} |"
         )
     lines.append("")
+
+    fc = results["fixture_correlation"]
+    lines += [
+        "## Fixture correlation: are same-team/same-match players actually correlated?",
+        "",
+        (
+            "`risk/portfolio.py`'s mean-variance optimizer documents an independent-"
+            "variance simplification (a squad's variance is just the sum of its "
+            "players' variances). This measures whether that's actually a good "
+            "approximation, using real backtest residuals -- see `risk/covariance.py` "
+            "for the full derivation (Ledoit-Wolf-style shrinkage toward 0)."
+        ),
+        "",
+        "| Relationship | Shrunk correlation (rho) | Gameweek samples |",
+        "|---|---|---|",
+        f"| Same team | {fc['same_team_rho']:+.3f} | {fc['n_same_team_gameweeks']} |",
+        f"| Opposing teams, same fixture | {fc['opponent_rho']:+.3f} | {fc['n_opponent_gameweeks']} |",
+        "",
+        (
+            f"Same-team correlation of {fc['same_team_rho']:+.3f} means the independence "
+            "assumption understates real squad variance whenever a lineup concentrates "
+            "picks from one team (which most managers do, e.g. 2-3 defenders from one "
+            "in-form defence): `risk/covariance.py`'s `portfolio_variance` accounts for "
+            "this; `risk/portfolio.py`'s per-player scoring still does not (see "
+            "docs/ROADMAP.md's known limitations)."
+            if fc["n_same_team_gameweeks"] > 0
+            else "Not enough gameweek samples yet to estimate this reliably."
+        ),
+        "",
+    ]
 
     lines += [
         "## Methodology",
@@ -464,4 +565,9 @@ def run_backtest_and_report(
     reports_dir.mkdir(parents=True, exist_ok=True)
     (reports_dir / "model_backtest.json").write_text(json.dumps(results, indent=2), encoding="utf-8")
     (reports_dir / "model_backtest.md").write_text(render_report_markdown(results), encoding="utf-8")
+
+    risk_validation = [StrategyValidation(**v) for v in results["risk_validation"]]
+    (reports_dir / "risk_validation.md").write_text(
+        render_risk_validation_markdown(risk_validation, results["test_season"]), encoding="utf-8"
+    )
     return results

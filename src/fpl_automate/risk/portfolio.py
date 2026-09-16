@@ -7,19 +7,27 @@ is the dial -- 0 recovers plain expected-points maximisation (identical to
 the `"balanced"` strategy), and larger values increasingly favour a lower-
 variance player over a higher-mean one.
 
-Known simplification, stated plainly rather than hidden: this treats each
-player's points as *independent* of every other player's, so a squad's
-total variance is just the sum of its players' variances
-(`Var(sum X_i) = sum Var(X_i)` only holds for independent X_i). In reality
-players are correlated -- two players from the same match share outcome
-risk (a heavy loss drags both team's players down together), and a real
-covariance-aware optimizer would need a covariance matrix estimated from
-historical results. That's real future work, not attempted here: it needs
-enough same-fixture player-pair history to estimate reliably, which this
-project doesn't yet compute (see docs/ROADMAP.md). Treating variance as
-additive is the standard, honest starting simplification for exactly this
-reason -- it's what a first pass at mean-variance optimization looks like
-before adding covariance.
+Known simplification, stated plainly rather than hidden: `risk_adjusted_score`
+and `captain_marginal_score` (this module) score one player at a time and
+treat that player's points as *independent* of every other player's, so
+summing these per-player scores across a squad implicitly assumes a
+squad's total variance is just the sum of its players' variances
+(`Var(sum X_i) = sum Var(X_i)`, which only holds for independent X_i). In
+reality players are correlated -- two players from the same match share
+outcome risk (a heavy loss drags both team's players down together).
+
+`risk/covariance.py` now measures that correlation for real, from actual
+backtest residuals, and `portfolio_variance` there computes a squad's true
+variance accounting for it (surfaced in the weekly report's "Starting XI
+portfolio variance" section). What's still *not* done, and remains real
+future work: the ILP lineup optimizer in `optimization/lineup.py` itself
+still selects and scores individual players independently (the per-player
+functions in *this* module) rather than solving a genuinely
+covariance-aware quadratic objective over the whole XI -- that would need
+a QP/MIQP solver, a materially bigger change than PuLP's linear ILP
+supports today. So the *reported* risk figure is honest and
+covariance-aware; the *selection* algorithm is not yet. See
+docs/ROADMAP.md.
 
 Captaincy needs its own formula, not just "double the score": doubling a
 player's points (Var(2X) = 4 x Var(X)) scales variance *quadratically*,

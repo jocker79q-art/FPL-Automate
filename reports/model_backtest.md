@@ -1,6 +1,6 @@
 # Projection models: walk-forward backtest report
 
-Generated: 2026-09-15T19:48:21.997810+00:00
+Generated: 2026-09-16T19:42:21.938450+00:00
 ML model trained on: 2021-22, 2022-23, 2023-24, 2024-25
 Backtested on (held out entirely from ML training): 2025-26
 
@@ -29,18 +29,22 @@ The ML model beats the hand-coded baseline by +21.7% MAE on this backtest (+8.4%
 | MID | 0.9496 | 1.2301 | 1.0608 | +22.8% | 47034 / 13310 |
 | FWD | 1.1029 | 1.3606 | 1.1645 | +18.9% | 13383 / 3287 |
 
-## ML model calibration: empirical residual quantiles
+## ML model calibration: does the quantile-regression band capture reality?
 
-Used at inference time to turn a point prediction into a floor/ceiling
-band (`expected + residual_p10` / `expected + residual_p90`) -- real
-observed error spread from this backtest, not an arbitrary heuristic:
+Floor/ceiling come from per-player quantile regression (10th/90th percentile of E[points|plays], `ml/model.py`'s `predict_quantiles`) combined with the hurdle model's own P(plays) via `mixture_floor_ceiling` -- a real per-player band, not a single global offset applied to every player at a position.
 
-| Position | Residual p10 | Residual p90 |
-|---|---|---|
-| GK | -1.27 | -0.01 |
-| DEF | -1.50 | +2.75 |
-| MID | -1.53 | +1.36 |
-| FWD | -1.87 | +1.14 |
+Overall: actual points fell inside the ML model's [floor, ceiling] band **90%** of the time (target: ~80%, since this is nominally an 80% central interval).
+
+By P(plays) used for that gameweek (bucketed the same way as the
+baseline's confidence below, for direct comparison):
+
+| P(plays) range | n | Band coverage | Mean P(plays) |
+|---|---|---|---|
+| 0.0-0.2 | 14628 | 97% | 0.04 |
+| 0.2-0.4 | 1767 | 88% | 0.28 |
+| 0.4-0.6 | 2226 | 85% | 0.51 |
+| 0.6-0.8 | 3816 | 84% | 0.71 |
+| 0.8-1.0 | 7320 | 79% | 0.91 |
 
 ## Baseline calibration: does the floor/ceiling band capture reality?
 
@@ -54,6 +58,17 @@ confidence projections actually more reliable?):
 | 0.4-0.6 | 14834 | 1% | 0.58 |
 | 0.6-0.8 | 1638 | 22% | 0.78 |
 | 0.8-1.0 | 13285 | 15% | 0.93 |
+
+## Fixture correlation: are same-team/same-match players actually correlated?
+
+`risk/portfolio.py`'s mean-variance optimizer documents an independent-variance simplification (a squad's variance is just the sum of its players' variances). This measures whether that's actually a good approximation, using real backtest residuals -- see `risk/covariance.py` for the full derivation (Ledoit-Wolf-style shrinkage toward 0).
+
+| Relationship | Shrunk correlation (rho) | Gameweek samples |
+|---|---|---|
+| Same team | +0.030 | 38 |
+| Opposing teams, same fixture | -0.035 | 38 |
+
+Same-team correlation of +0.030 means the independence assumption understates real squad variance whenever a lineup concentrates picks from one team (which most managers do, e.g. 2-3 defenders from one in-form defence): `risk/covariance.py`'s `portfolio_variance` accounts for this; `risk/portfolio.py`'s per-player scoring still does not (see docs/ROADMAP.md's known limitations).
 
 ## Methodology
 
