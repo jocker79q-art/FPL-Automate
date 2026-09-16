@@ -69,7 +69,9 @@ def recommend_transfers_action(settings: Settings, strategy: Strategy) -> str:
     squad_state = resolve_squad_state(client, settings.fpl_team_id, data.gameweeks)
     transfers_history = client.get_entry_transfers(settings.fpl_team_id)
     owned_squad = [data.players_by_id[p.element_id] for p in squad_state.picks]
-    projections = compute_projections(data, from_event=next_deadline_event)
+    projections = compute_projections(
+        data, from_event=next_deadline_event, projection_model=settings.projection_model
+    )
 
     scenarios = recommend_transfers(
         squad=owned_squad,
@@ -80,6 +82,7 @@ def recommend_transfers_action(settings: Settings, strategy: Strategy) -> str:
         projections_3gw=projections[3],
         projections_5gw=projections[5],
         strategy=strategy,
+        risk_aversion=settings.risk_aversion,
         max_transfer_risk=settings.max_transfer_risk,
     )
 
@@ -101,9 +104,11 @@ def optimise_lineup_action(settings: Settings, strategy: Strategy) -> str:
 
     squad_state = resolve_squad_state(client, settings.fpl_team_id, data.gameweeks)
     owned_squad = [data.players_by_id[p.element_id] for p in squad_state.picks]
-    projections = compute_projections(data, from_event=next_deadline_event, horizons=(1,))
+    projections = compute_projections(
+        data, from_event=next_deadline_event, horizons=(1,), projection_model=settings.projection_model
+    )
 
-    result = optimize_lineup(owned_squad, projections[1], strategy)
+    result = optimize_lineup(owned_squad, projections[1], strategy, settings.risk_aversion)
     lines = [
         f"Formation: {result.formation} | Strategy: {strategy}",
         f"Captain: {data.players_by_id[result.captain_id].web_name}",

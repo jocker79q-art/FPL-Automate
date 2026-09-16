@@ -49,6 +49,10 @@ IDENTITY_FIELDS = [
 SAFETY_FIELDS = [
     ("MAX_TRANSFER_RISK", "Max points-hit to auto-recommend", False),
 ]
+PROJECTION_MODEL_CHOICES = ["ml", "baseline"]
+RISK_FIELDS = [
+    ("RISK_AVERSION", "Risk aversion (0 = same as balanced strategy)", False),
+]
 EMAIL_FIELDS = [
     ("SMTP_HOST", "SMTP host", False),
     ("SMTP_PORT", "SMTP port", False),
@@ -88,6 +92,10 @@ class SettingsTab(ttk.Frame):
         row = self._add_section(row, "Identity", IDENTITY_FIELDS, values)
         row = self._add_checkbox(row, "EMERGENCY_STOP", "Emergency stop (blocks everything)", values)
         row = self._add_section(row, "Safety", SAFETY_FIELDS, values)
+        row = self._add_dropdown(
+            row, "PROJECTION_MODEL", "Projection model", PROJECTION_MODEL_CHOICES, values, default="ml"
+        )
+        row = self._add_section(row, "Risk", RISK_FIELDS, values)
         row = self._add_checkbox(
             row, "EMAIL_NOTIFICATIONS_ENABLED", "Enable email notifications", values
         )
@@ -118,6 +126,17 @@ class SettingsTab(ttk.Frame):
             self._vars[key] = var
             row += 1
         return row
+
+    def _add_dropdown(
+        self, row: int, key: str, label: str, choices: list[str], values: dict[str, str], default: str
+    ) -> int:
+        ttk.Label(self, text=label).grid(row=row, column=0, sticky="w", pady=2)
+        current = values.get(key, "").strip() or default
+        var = tk.StringVar(value=current if current in choices else default)
+        combo = ttk.Combobox(self, textvariable=var, values=choices, state="readonly", width=37)
+        combo.grid(row=row, column=1, sticky="ew", pady=2)
+        self._vars[key] = var
+        return row + 1
 
     def _add_checkbox(self, row: int, key: str, label: str, values: dict[str, str]) -> int:
         var = tk.BooleanVar(value=values.get(key, "false").strip().lower() == "true")
@@ -172,7 +191,7 @@ class DashboardTab(ttk.Frame):
         strategy_menu = ttk.Combobox(
             controls,
             textvariable=self._strategy_var,
-            values=["conservative", "balanced", "aggressive"],
+            values=["conservative", "balanced", "aggressive", "risk_adjusted"],
             state="readonly",
             width=14,
         )
