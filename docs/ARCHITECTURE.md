@@ -10,8 +10,9 @@
 | Feature engineering | `features/engineering.py` | Form shrinkage, fixture windows, minutes reliability, value |
 | Projection (baseline) | `projections/baseline_model.py` | Interpretable expected/floor/ceiling points model |
 | Projection (ML) | `projections/ml/` (`historical.py`, `features.py`, `model.py`, `backtest.py`, `live.py`) | Two-stage hurdle ML model: training data ingestion, leak-free feature engineering, the model itself, walk-forward backtest vs. the baseline, and live inference -- see the **Model** section in `README.md` |
+| Risk | `risk/classification.py`, `risk/portfolio.py` | Safe/balanced/risky classification from a projection's own floor/ceiling band; mean-variance risk-adjusted scoring (incl. the correct quadratic captaincy-variance formula) used by `optimization/lineup.py`'s `risk_adjusted` strategy -- see the **Risk** section in `README.md` |
 | Squad state | `squad/state.py`, `squad/valuation.py` | Current squad, bank, free transfers, chips, sell values -- all from public entry endpoints |
-| Optimisation | `optimization/lineup.py` | ILP (PuLP) for starting XI / bench / captaincy under 3 strategies |
+| Optimisation | `optimization/lineup.py` | ILP (PuLP) for starting XI / bench / captaincy under 4 strategies (3 single-number substitutions + `risk_adjusted`'s genuine mean-variance objective) |
 | Transfers | `transfers/engine.py` | Roll vs. 1/2-transfer search, hit-aware, budget/club-limit constrained |
 | Reporting | `reporting/report.py` | Assembles the weekly Markdown/JSON report |
 | Notifications | `notifications/` | Pluggable `Notifier` interface; SMTP email implementation |

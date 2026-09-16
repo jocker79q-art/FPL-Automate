@@ -41,6 +41,34 @@ all yet).
   (`workflow.reconcile_outcomes`, `fpl-automate show-model-performance`) is
   the live, ongoing complement to this offline backtest.
 
+## Phase 2.5 -- Risk classification & mean-variance optimization (done, not originally scoped)
+
+Not part of the original phased plan above -- added because a projection
+model producing `expected_points` alone tells you what to expect, not how
+much to trust it, and the roadmap's own calibration finding (Phase 2) made
+that gap concrete rather than theoretical.
+
+- ~~Classify every player (squad and transfer candidates) as safe/
+  balanced/risky.~~ Done: `risk/classification.py`, using coefficient of
+  variation from the projection's own floor/ceiling band, with qualitative
+  risk flags (injury doubt, rotation risk, blank gameweek, small sample)
+  as a hard floor that can only push the classification *up*, never down.
+  Shown in `analyse-squad`, every suggested transfer, and the weekly
+  report's "Squad risk profile" section.
+- ~~A genuine risk-adjusted optimizer, not just another single-number
+  substitution like conservative/balanced/aggressive.~~ Done:
+  `risk/portfolio.py` + `optimization/lineup.py`'s `risk_adjusted`
+  strategy -- a real mean-variance (Markowitz-style) objective,
+  user-tunable via `RISK_AVERSION`, with a mathematically correct
+  (quadratic, not linear) variance treatment for the captaincy multiplier
+  specifically -- verified against a naive "just double it" alternative
+  in `tests/test_risk_portfolio.py`.
+- **Not done, documented as a known limitation**: player variance is
+  treated as independent (no covariance matrix), so correlated risk
+  between players in the same match isn't modelled. Real future work --
+  would need enough same-fixture player-pair history to estimate a
+  covariance matrix reliably, which this project doesn't yet compute.
+
 ## Phase 3 -- Notifications, richer late-news detection, dashboard
 
 - Detect *changes* between consecutive runs (a status flip, a price

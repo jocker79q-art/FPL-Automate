@@ -96,3 +96,58 @@ def test_strategies_can_select_different_lineups_via_floor_vs_ceiling():
     aggressive = optimize_lineup(squad, projections, strategy="aggressive")
     assert aggressive.captain_id == risky_id
     assert conservative.captain_id != risky_id
+
+
+def _squad_with_a_safe_and_a_volatile_standout():
+    """A squad where one player has a slightly higher expected value but
+    much wider floor/ceiling spread than another -- built so risk_aversion
+    can plausibly flip which one gets captained."""
+    squad = _standard_squad()
+    projections = {p.id: _proj(p.id, expected=5.0, floor=4.5, ceiling=5.5) for p in squad}
+    safe_id = squad[-1].id
+    volatile_id = squad[-2].id
+    projections[safe_id] = _proj(safe_id, expected=8.0, floor=7.0, ceiling=9.0)
+    projections[volatile_id] = _proj(volatile_id, expected=8.5, floor=1.0, ceiling=16.0)
+    return squad, projections, safe_id, volatile_id
+
+
+def test_risk_adjusted_with_zero_aversion_matches_balanced_exactly():
+    squad, projections, _safe_id, _volatile_id = _squad_with_a_safe_and_a_volatile_standout()
+
+    balanced = optimize_lineup(squad, projections, strategy="balanced")
+    risk_adjusted = optimize_lineup(squad, projections, strategy="risk_adjusted", risk_aversion=0.0)
+
+    assert risk_adjusted.captain_id == balanced.captain_id
+    assert set(risk_adjusted.starting_xi) == set(balanced.starting_xi)
+    assert risk_adjusted.total_risk_adjusted_score == pytest.approx(balanced.total_expected_points)
+
+
+def test_risk_adjusted_result_carries_the_aversion_used_and_a_score():
+    squad, projections, _safe_id, _volatile_id = _squad_with_a_safe_and_a_volatile_standout()
+
+    result = optimize_lineup(squad, projections, strategy="risk_adjusted", risk_aversion=1.5)
+    assert result.risk_aversion == 1.5
+    assert result.total_risk_adjusted_score is not None
+
+
+def test_non_risk_adjusted_strategies_leave_the_risk_fields_unset():
+    squad = _standard_squad()
+    projections = {p.id: _proj(p.id, expected=5.0) for p in squad}
+    result = optimize_lineup(squad, projections, strategy="balanced")
+    assert result.risk_aversion is None
+    assert result.total_risk_adjusted_score is None
+
+
+def test_higher_risk_aversion_shifts_captaincy_toward_the_lower_variance_player():
+    squad, projections, safe_id, volatile_id = _squad_with_a_safe_and_a_volatile_standout()
+
+    # At aversion=0, the higher-mean (volatile) player should win captaincy --
+    # same as "balanced" would pick, since variance isn't penalised at all yet.
+    low_aversion = optimize_lineup(squad, projections, strategy="risk_adjusted", risk_aversion=0.0)
+    assert low_aversion.captain_id == volatile_id
+
+    # At a high enough aversion, the quadratic variance penalty on
+    # captaincy should flip the choice to the safer player despite its
+    # slightly lower expected points.
+    high_aversion = optimize_lineup(squad, projections, strategy="risk_adjusted", risk_aversion=1.0)
+    assert high_aversion.captain_id == safe_id

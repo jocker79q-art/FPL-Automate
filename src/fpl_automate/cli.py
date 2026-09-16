@@ -19,6 +19,7 @@ from fpl_automate.logging_config import configure_logging
 from fpl_automate.optimization.lineup import optimize_lineup
 from fpl_automate.projections.ml import historical as ml_historical
 from fpl_automate.projections.ml.backtest import run_backtest_and_report
+from fpl_automate.risk.classification import RiskTier, classify_squad_risk, tier_counts
 from fpl_automate.runtime import (
     APP_BASE_DIR,
     BUNDLE_DIR,
@@ -54,6 +55,13 @@ _get_settings = get_app_settings
 def _init() -> None:
     settings = _get_settings()
     configure_logging(settings.log_level)
+
+
+_RISK_COLORS = {RiskTier.SAFE: "green", RiskTier.BALANCED: "yellow", RiskTier.RISKY: "red"}
+
+
+def _risk_cell(tier: RiskTier) -> str:
+    return f"[{_RISK_COLORS[tier]}]{tier.value}[/{_RISK_COLORS[tier]}]"
 
 
 @app.command("health-check")
@@ -119,24 +127,39 @@ def validate_data() -> None:
 
 @app.command("analyse-squad")
 def analyse_squad() -> None:
-    """Shows your current squad, bank, free transfers, and chip status."""
+    """Shows your current squad, bank, free transfers, chip status, and
+    each player's risk profile (safe/balanced/risky -- see `risk/classification.py`)."""
     _init()
     settings = _get_settings()
     client = build_client(settings, DEFAULT_CACHE_DIR)
     db = build_db(settings)
     data = fetch_and_validate(client, db)
+    _last_picks_event, next_deadline_event = find_relevant_events(data.gameweeks)
     squad_state = resolve_squad_state(client, settings.fpl_team_id, data.gameweeks)
+
+    projections = compute_projections(
+        data, from_event=next_deadline_event, horizons=(1,), projection_model=settings.projection_model
+    )
+    risk_profiles = classify_squad_risk(projections[1])
 
     table = Table(title=f"Squad as of GW{squad_state.as_of_event}")
     table.add_column("Player")
     table.add_column("Pos")
     table.add_column("Price")
     table.add_column("Status")
+    table.add_column("Risk")
     for pick in squad_state.picks:
         p = data.players_by_id[pick.element_id]
         tag = " (C)" if pick.is_captain else (" (VC)" if pick.is_vice_captain else "")
-        table.add_row(p.web_name + tag, p.position.short, f"£{p.price:.1f}m", p.availability.status)
+        risk = risk_profiles.get(p.id)
+        risk_cell = _risk_cell(risk.tier) if risk else "-"
+        table.add_row(p.web_name + tag, p.position.short, f"£{p.price:.1f}m", p.availability.status, risk_cell)
     console.print(table)
+    counts = tier_counts(risk_profiles)
+    console.print(
+        f"Squad risk profile: {counts[RiskTier.SAFE]} safe, {counts[RiskTier.BALANCED]} balanced, "
+        f"{counts[RiskTier.RISKY]} risky"
+    )
     console.print(f"Bank: £{squad_state.bank}m | Squad value: £{squad_state.squad_value}m")
     console.print(f"Free transfers available: {squad_state.free_transfers_available}")
     console.print(
@@ -149,11 +172,17 @@ def analyse_squad() -> None:
 
 @app.command("recommend-transfers")
 def recommend_transfers_cmd(
-    strategy: str = typer.Option("balanced", help="conservative | balanced | aggressive"),
+    strategy: str = typer.Option(
+        "balanced", help="conservative | balanced | aggressive | risk_adjusted"
+    ),
+    risk_aversion: float = typer.Option(
+        None, help="Only used with --strategy risk_adjusted; overrides RISK_AVERSION from .env."
+    ),
 ) -> None:
     """Shows ranked transfer scenarios (including 'roll') for the next deadline."""
     _init()
     settings = _get_settings()
+    effective_risk_aversion = settings.risk_aversion if risk_aversion is None else risk_aversion
     client = build_client(settings, DEFAULT_CACHE_DIR)
     db = build_db(settings)
     data = fetch_and_validate(client, db)
@@ -177,6 +206,7 @@ def recommend_transfers_cmd(
         projections_3gw=projections[3],
         projections_5gw=projections[5],
         strategy=strategy,  # type: ignore[arg-type]
+        risk_aversion=effective_risk_aversion,
         max_transfer_risk=settings.max_transfer_risk,
     )
 
@@ -196,11 +226,17 @@ def recommend_transfers_cmd(
 
 @app.command("optimise-lineup")
 def optimise_lineup_cmd(
-    strategy: str = typer.Option("balanced", help="conservative | balanced | aggressive"),
+    strategy: str = typer.Option(
+        "balanced", help="conservative | balanced | aggressive | risk_adjusted"
+    ),
+    risk_aversion: float = typer.Option(
+        None, help="Only used with --strategy risk_adjusted; overrides RISK_AVERSION from .env."
+    ),
 ) -> None:
     """Optimises starting XI / bench / captaincy for your CURRENT squad (no transfers)."""
     _init()
     settings = _get_settings()
+    effective_risk_aversion = settings.risk_aversion if risk_aversion is None else risk_aversion
     client = build_client(settings, DEFAULT_CACHE_DIR)
     db = build_db(settings)
     data = fetch_and_validate(client, db)
@@ -212,7 +248,7 @@ def optimise_lineup_cmd(
         data, from_event=next_deadline_event, horizons=(1,), projection_model=settings.projection_model
     )
 
-    result = optimize_lineup(owned_squad, projections[1], strategy)  # type: ignore[arg-type]
+    result = optimize_lineup(owned_squad, projections[1], strategy, effective_risk_aversion)  # type: ignore[arg-type]
     console.print(f"Formation: {result.formation} | Strategy: {strategy}")
     console.print(f"Captain: {data.players_by_id[result.captain_id].web_name}")
     console.print(f"Vice-captain: {data.players_by_id[result.vice_captain_id].web_name}")
@@ -222,13 +258,21 @@ def optimise_lineup_cmd(
         f"Expected {result.total_expected_points} | Floor {result.total_floor_points} | "
         f"Ceiling {result.total_ceiling_points}"
     )
+    if result.total_risk_adjusted_score is not None:
+        console.print(
+            f"Risk-adjusted score: {result.total_risk_adjusted_score} (risk_aversion={result.risk_aversion})"
+        )
 
 
 @app.command("run-weekly-plan")
 def run_weekly_plan_cmd(
-    strategy: str = typer.Option("balanced", help="conservative | balanced | aggressive"),
+    strategy: str = typer.Option(
+        "balanced", help="conservative | balanced | aggressive | risk_adjusted"
+    ),
 ) -> None:
-    """Runs the full pipeline and writes/sends the weekly decision report."""
+    """Runs the full pipeline and writes/sends the weekly decision report.
+    Uses RISK_AVERSION from .env when --strategy risk_adjusted (no
+    per-run CLI override, same as MAX_TRANSFER_RISK/PROJECTION_MODEL)."""
     _init()
     settings = _get_settings()
     report, md_path, json_path = run_weekly_plan(

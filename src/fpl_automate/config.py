@@ -40,6 +40,15 @@ class Settings(BaseSettings):
     # every projection's rationale states which model produced it.
     projection_model: Literal["baseline", "ml"] = "ml"
 
+    # Mean-variance risk aversion (optimization/lineup.py's "risk_adjusted"
+    # strategy, see risk/portfolio.py) -- 0 is equivalent to plain
+    # expected-points maximisation ("balanced"); larger values increasingly
+    # favour lower-variance players and captaincy picks over higher-mean
+    # but more volatile ones. Only changes decisions actually made under
+    # strategy="risk_adjusted" -- it's always computed for the report's
+    # strategy-comparison table regardless of the chosen strategy.
+    risk_aversion: float = 1.0
+
     # Storage
     database_url: str = "sqlite:///data/fpl_automate.db"
 
@@ -82,6 +91,13 @@ class Settings(BaseSettings):
     def _sane_risk(cls, v: int) -> int:
         if v < 0 or v > 16:
             raise ValueError("MAX_TRANSFER_RISK must be between 0 and 16")
+        return v
+
+    @field_validator("risk_aversion")
+    @classmethod
+    def _non_negative_risk_aversion(cls, v: float) -> float:
+        if v < 0:
+            raise ValueError("RISK_AVERSION must be >= 0 (0 means no risk penalty at all)")
         return v
 
     @model_validator(mode="after")

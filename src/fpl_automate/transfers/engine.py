@@ -31,6 +31,7 @@ import logging
 from pydantic import BaseModel
 
 from fpl_automate.optimization.lineup import Strategy, optimize_lineup
+from fpl_automate.risk.classification import RiskTier, classify_player_risk
 from fpl_automate.squad.valuation import build_purchase_price_index, estimate_sell_value_tenths
 from fpl_automate.storage.models import Player, PlayerProjection, SquadState
 
@@ -48,6 +49,7 @@ class TransferMove(BaseModel):
     buy_player_id: int
     sell_value_tenths: int
     buy_price_tenths: int
+    buy_risk_tier: RiskTier
 
 
 class TransferScenario(BaseModel):
@@ -129,9 +131,9 @@ def _find_buy_candidates(
 
 
 def _lineup_ep(
-    squad: list[Player], projections: dict[int, PlayerProjection], strategy: Strategy
+    squad: list[Player], projections: dict[int, PlayerProjection], strategy: Strategy, risk_aversion: float
 ) -> float:
-    return optimize_lineup(squad, projections, strategy).total_expected_points
+    return optimize_lineup(squad, projections, strategy, risk_aversion).total_expected_points
 
 
 def recommend_transfers(
@@ -143,9 +145,18 @@ def recommend_transfers(
     projections_3gw: dict[int, PlayerProjection],
     projections_5gw: dict[int, PlayerProjection],
     strategy: Strategy = "balanced",
+    risk_aversion: float = 1.0,
     max_transfer_risk: int = 4,
     min_net_gain_to_recommend: float = DEFAULT_MIN_NET_GAIN_TO_RECOMMEND,
 ) -> list[TransferScenario]:
+    """`risk_aversion` is only used when `strategy == "risk_adjusted"`
+    (ignored otherwise) -- see `optimization/lineup.py` and
+    `risk/portfolio.py`. When it's in effect, the `..._ep` fields on
+    `TransferScenario` hold the risk-adjusted objective value the lineup
+    optimiser actually maximised, not literal expected points -- the
+    field names stay as-is for a single consistent interface across every
+    strategy, but see this scenario's `rationale` for which one produced it.
+    """
     if len(squad) != 15:
         raise TransferEngineError(f"Expected a 15-man squad, got {len(squad)}")
 
@@ -153,8 +164,8 @@ def recommend_transfers(
     squad_ids = {p.id for p in squad}
     by_id = {p.id: p for p in all_players}
 
-    baseline_ep_1 = _lineup_ep(squad, projections_1gw, strategy)
-    baseline_ep_5 = _lineup_ep(squad, projections_5gw, strategy)
+    baseline_ep_1 = _lineup_ep(squad, projections_1gw, strategy, risk_aversion)
+    baseline_ep_5 = _lineup_ep(squad, projections_5gw, strategy, risk_aversion)
 
     scenarios: list[TransferScenario] = []
     scenarios.append(
@@ -200,8 +211,8 @@ def recommend_transfers(
         for buy in buy_candidates:
             new_squad = [p for p in squad if p.id != sell.id] + [buy]
             try:
-                new_ep_1 = _lineup_ep(new_squad, projections_1gw, strategy)
-                new_ep_5 = _lineup_ep(new_squad, projections_5gw, strategy)
+                new_ep_1 = _lineup_ep(new_squad, projections_1gw, strategy, risk_aversion)
+                new_ep_5 = _lineup_ep(new_squad, projections_5gw, strategy, risk_aversion)
             except Exception as exc:  # noqa: BLE001 - a single bad candidate shouldn't kill the search
                 logger.debug("Skipping candidate swap %s->%s: %s", sell.id, buy.id, exc)
                 continue
@@ -220,6 +231,7 @@ def recommend_transfers(
                     )
                 for flag in projections_5gw[buy.id].risk_flags:
                     risk_notes.append(f"{buy.web_name}: {flag}")
+                buy_risk = classify_player_risk(projections_5gw[buy.id]).tier
 
                 scenario = TransferScenario(
                     label=f"{sell.web_name} -> {buy.web_name}"
@@ -230,6 +242,7 @@ def recommend_transfers(
                             buy_player_id=buy.id,
                             sell_value_tenths=sell_value,
                             buy_price_tenths=buy.now_cost_tenths,
+                            buy_risk_tier=buy_risk,
                         )
                     ],
                     free_transfers_used=1 if hit == 0 else 0,
@@ -283,8 +296,8 @@ def recommend_transfers(
             first_buy_name = by_id[best_first.moves[0].buy_player_id].web_name
             for buy2 in buy_candidates2[:5]:
                 final_squad = [p for p in intermediate_squad if p.id != sell2.id] + [buy2]
-                new_ep_1 = _lineup_ep(final_squad, projections_1gw, strategy)
-                new_ep_5 = _lineup_ep(final_squad, projections_5gw, strategy)
+                new_ep_1 = _lineup_ep(final_squad, projections_1gw, strategy, risk_aversion)
+                new_ep_5 = _lineup_ep(final_squad, projections_5gw, strategy, risk_aversion)
                 hit = 0 if squad_state.free_transfers_available >= 2 else POINTS_PER_HIT
                 gain_5 = round(new_ep_5 - baseline_ep_5, 2)
                 candidate_scenario = TransferScenario(
@@ -300,6 +313,7 @@ def recommend_transfers(
                             buy_player_id=buy2.id,
                             sell_value_tenths=sell_value2,
                             buy_price_tenths=buy2.now_cost_tenths,
+                            buy_risk_tier=classify_player_risk(projections_5gw[buy2.id]).tier,
                         ),
                     ],
                     free_transfers_used=2 if hit == 0 else 0,

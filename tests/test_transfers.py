@@ -1,17 +1,18 @@
 from __future__ import annotations
 
+from fpl_automate.risk.classification import RiskTier
 from fpl_automate.storage.models import ChipPlay, PlayerProjection, Position, SquadPick, SquadState
 from fpl_automate.transfers.engine import recommend_transfers
 from tests.conftest import make_player
 
 
-def _proj(player_id, expected):
+def _proj(player_id, expected, floor_ratio=0.7, ceiling_ratio=1.3):
     return PlayerProjection(
         player_id=player_id,
         gameweek=1,
         expected_points=expected,
-        floor_points=expected * 0.7,
-        ceiling_points=expected * 1.3,
+        floor_points=expected * floor_ratio,
+        ceiling_points=expected * ceiling_ratio,
         confidence=0.8,
     )
 
@@ -143,3 +144,26 @@ def test_hit_recommended_only_when_gain_clears_threshold():
     )
     roll = next(s for s in scenarios if s.label.startswith("Roll"))
     assert roll.recommended is True  # tiny gain shouldn't clear a -4 hit
+
+
+def test_suggested_transfer_moves_carry_the_buy_players_risk_tier():
+    squad = _standard_squad()
+    weak_forward = squad[-1]
+    state = _squad_state(squad, bank_tenths=10, free_transfers=1)
+    projections = {p.id: _proj(p.id, expected=4.0) for p in squad}
+    projections[weak_forward.id] = _proj(weak_forward.id, expected=0.5)
+
+    # A much better forward, but with a wide floor/ceiling spread -- should
+    # come through as "risky", not silently defaulted to something else.
+    volatile_forward = make_player(999, position=Position.FORWARD, team_id=50, now_cost_tenths=95)
+    projections[volatile_forward.id] = _proj(volatile_forward.id, expected=6.0, floor_ratio=0.0, ceiling_ratio=2.5)
+    pool = squad + [volatile_forward]
+
+    scenarios = recommend_transfers(
+        squad, state, transfers_history=[], all_players=pool,
+        projections_1gw=projections, projections_3gw=projections, projections_5gw=projections,
+    )
+
+    best = scenarios[0]
+    assert best.moves[0].buy_player_id == volatile_forward.id
+    assert best.moves[0].buy_risk_tier == RiskTier.RISKY

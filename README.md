@@ -130,6 +130,58 @@ gameweek finishes (`workflow.reconcile_outcomes`, run at the start of every
 MAE/bias this has actually produced in production, gameweek by gameweek --
 the running, real-world complement to the offline backtest.
 
+## Risk
+
+Every projection already carries `expected_points`, `floor_points`,
+`ceiling_points`, and `confidence` -- `risk/` turns that into two things:
+a plain-language classification, and a genuine risk-adjusted optimizer.
+
+**Safe / balanced / risky classification** (`risk/classification.py`):
+every squad player (and every transfer candidate) is labelled by
+*coefficient of variation* -- the projection's implied standard deviation
+(derived from its floor/ceiling band, treated as an ~80% interval; exact
+by construction for the ML model, an approximation for the baseline --
+see the module docstring) divided by its expected points, so a
+low-scoring erratic player and a high-scoring erratic player are compared
+on the same relative scale rather than raw point spread. Qualitative
+signals (`injury_or_availability_doubt`, `rotation_risk`,
+`blank_gameweek`, `small_sample`) can only push a classification *up* in
+risk, never down -- a numerically tight spread on a player with a live
+injury doubt still comes out "risky". Shown in `analyse-squad`, every
+suggested transfer, and the weekly report's "Squad risk profile" section.
+
+**Mean-variance risk-adjusted optimization** (`risk/portfolio.py`,
+`optimization/lineup.py`'s `risk_adjusted` strategy): a genuine
+Markowitz-style objective, not just another single-number substitution
+like the other three strategies (which just swap in floor/expected/
+ceiling as the thing to maximise). The objective is
+`expected_points - risk_aversion * variance` per player, with
+`risk_aversion` a user-set dial (`RISK_AVERSION` in `.env`, default `1.0`
+-- `0` is mathematically identical to `balanced`; higher values
+increasingly favour lower-variance players and captaincy picks over
+higher-mean but more volatile ones, verified in
+`tests/test_optimization.py`). Captaincy gets its own, mathematically
+correct treatment: doubling a player's points quadruples their variance
+(`Var(2X) = 4·Var(X)`), so the marginal value of captaining player *c* is
+`mu_c - 3·risk_aversion·sigma_c²`, not simply double their normal-starter
+score -- a naive "just double it" implementation would under-penalise
+volatile captaincy picks by a factor of 3, and this optimizer can (and,
+verified against real data, does) pick a different captain than
+`balanced` even when the two strategies choose an identical starting XI.
+
+Documented, honest simplification (see `risk/portfolio.py`'s docstring):
+player variances are treated as independent, so a squad's total variance
+is just the sum of its players' variances -- real players are correlated
+(two from the same match share outcome risk), and a covariance-aware
+version would need a covariance matrix this project doesn't yet estimate
+from historical results (real future work, not attempted here). At very
+high `risk_aversion` the quadratic captaincy penalty can concentrate the
+optimizer on an oddly "boring" pick (e.g. a nailed but low-ceiling
+goalkeeper) over a much higher-scoring attacker -- correct minimum-variance
+behaviour at that extreme, not a bug, but a sign the dial is set higher
+than most managers would actually want; the default (`1.0`) does not do
+this on real data (verified in the checks above).
+
 ## Setup
 
 Requires Python 3.11+.
@@ -156,6 +208,7 @@ All variables are documented inline in `.env.example`. Summary:
 | `ENABLE_AUTO_EXECUTION` | No (default false) | Reserved; currently a no-op even if true |
 | `MAX_TRANSFER_RISK` | No (default 4) | Max points-hit eligible for auto-recommendation |
 | `PROJECTION_MODEL` | No (default `ml`) | `ml` (trained model, baseline fallback per player) or `baseline` (hand-built model only) -- see **Model** |
+| `RISK_AVERSION` | No (default `1.0`) | Mean-variance risk dial for the `risk_adjusted` strategy, `0` = same as `balanced` -- see **Risk** |
 | `DATABASE_URL` | No | SQLite path |
 | `EMAIL_NOTIFICATIONS_ENABLED` + `SMTP_*` / `EMAIL_*` | No | Email alerts |
 
@@ -165,8 +218,8 @@ All variables are documented inline in `.env.example`. Summary:
 fpl-automate health-check          # config, database, FPL API reachability
 fpl-automate fetch-data            # pull + persist current player/fixture data
 fpl-automate validate-data         # fetch + run data-quality checks only
-fpl-automate analyse-squad         # your current squad, bank, free transfers, chips
-fpl-automate recommend-transfers   # ranked transfer scenarios (roll vs. 1/2 transfers)
+fpl-automate analyse-squad         # your current squad, bank, free transfers, chips, risk profile
+fpl-automate recommend-transfers   # ranked transfer scenarios (roll vs. 1/2 transfers), risk-tagged
 fpl-automate optimise-lineup       # best XI/bench/captaincy for your CURRENT squad
 fpl-automate run-weekly-plan       # full pipeline -> writes reports/gwN_<timestamp>.md/.json
 fpl-automate show-history          # past decisions + recorded outcomes
@@ -175,9 +228,11 @@ fpl-automate fetch-historical-data  # downloads/refreshes cached multi-season tr
 fpl-automate backtest               # trains + walk-forward backtests the ML model -- see Model
 ```
 
-Add `--strategy conservative|balanced|aggressive` to
+Add `--strategy conservative|balanced|aggressive|risk_adjusted` to
 `recommend-transfers`/`optimise-lineup`/`run-weekly-plan` (default
-`balanced`).
+`balanced`). `--risk-aversion` (on `recommend-transfers`/`optimise-lineup`
+only; `run-weekly-plan` uses `RISK_AVERSION` from `.env`) overrides the
+dial for `risk_adjusted` -- see **Risk**.
 
 Not yet implemented (see `docs/ROADMAP.md`): `bursary-search`,
 `bursary-score`, `generate-checklist` -- these exist as CLI stubs that say so
@@ -295,14 +350,18 @@ ruff check src tests
 mypy
 ```
 
-119 tests as of this writing, covering: the FPL client's retry/cache/error
+147 tests as of this writing, covering: the FPL client's retry/cache/error
 handling (via `responses`-mocked HTTP), the data-validation gate, feature
 engineering (form shrinkage, fixture windows, minutes reliability), the
 baseline projection model (blank/double gameweeks, injury handling,
 captaincy), the lineup ILP optimiser (formation constraints, strategy-driven
-captaincy), the transfer engine (budget/club-limit enforcement, hit
-thresholds), free-transfer ledger simulation, sell-value/price-tax logic,
-SQLite persistence, and the ML model layer specifically: leak-free rolling
+captaincy, and the risk-adjusted strategy's captaincy math specifically),
+the transfer engine (budget/club-limit enforcement, hit thresholds, risk
+tagging), free-transfer ledger simulation, sell-value/price-tax logic,
+SQLite persistence, the risk classification/mean-variance layer (tier
+overrides from qualitative risk flags, the quadratic captaincy-variance
+formula verified against a naive "just double it" implementation), report
+rendering, and the ML model layer specifically: leak-free rolling
 features (a gameweek's own result never leaks into its own features, and a
 season boundary resets rolling history even when FPL recycles element IDs),
 the hurdle model's classifier/regressor split, the walk-forward backtest
@@ -354,13 +413,17 @@ and live-availability override, and automatic outcome reconciliation.
   individually with that gameweek's real fixture, see **Model**).
 - **The two-transfer search is greedy**, not exhaustive: it can miss a
   jointly-optimal pair that isn't optimal individually.
+- **The mean-variance optimizer assumes independent player variance**
+  (no covariance matrix) -- see **Risk** above; a correlated (same-match)
+  version is real future work, not attempted here.
 - **This sandboxed development session could not reach
   fantasy.premierleague.com** (blocked by this environment's own network
-  policy) -- the full pipeline is validated with 119 tests against
-  mocked/fabricated data (including the ML model scored against real,
-  fetched historical data directly, bypassing only the live FPL API call
-  itself), but you should run `fpl-automate health-check` yourself as the
-  first real connectivity check.
+  policy) -- the full pipeline is validated with 147 tests against
+  mocked/fabricated data (including the ML model and the risk-adjusted
+  optimizer both exercised against real, fetched historical/current-season
+  data directly, bypassing only the live FPL API call itself), but you
+  should run `fpl-automate health-check` yourself as the first real
+  connectivity check.
 
 ## Roadmap
 

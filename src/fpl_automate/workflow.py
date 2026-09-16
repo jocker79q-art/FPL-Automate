@@ -38,7 +38,7 @@ from fpl_automate.validation.checks import validate_bootstrap_static, validate_f
 
 logger = logging.getLogger(__name__)
 
-STRATEGIES: tuple[Strategy, ...] = ("conservative", "balanced", "aggressive")
+STRATEGIES: tuple[Strategy, ...] = ("conservative", "balanced", "aggressive", "risk_adjusted")
 DEFAULT_HORIZONS = (1, 3, 5)
 
 
@@ -284,6 +284,7 @@ def run_weekly_plan(
         projections_3gw=projections[3],
         projections_5gw=projections[5],
         strategy=chosen_strategy,
+        risk_aversion=settings.risk_aversion,
         max_transfer_risk=settings.max_transfer_risk,
     )
     recommended = next((s for s in scenarios if s.recommended), scenarios[0])
@@ -294,7 +295,8 @@ def run_weekly_plan(
         resulting_squad.append(data.players_by_id[move.buy_player_id])
 
     lineups_by_strategy = {
-        strat: optimize_lineup(resulting_squad, projections[1], strat) for strat in STRATEGIES
+        strat: optimize_lineup(resulting_squad, projections[1], strat, settings.risk_aversion)
+        for strat in STRATEGIES
     }
 
     report = build_weekly_report(

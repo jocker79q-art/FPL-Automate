@@ -13,6 +13,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from fpl_automate.optimization.lineup import LineupResult, Strategy
+from fpl_automate.risk.classification import RiskProfile, RiskTier, classify_squad_risk, tier_counts
 from fpl_automate.storage.models import Player, PlayerProjection, SquadState
 from fpl_automate.transfers.engine import TransferScenario
 
@@ -33,6 +34,7 @@ class WeeklyReport:
     what_would_change_this: list[str] = field(default_factory=list)
     approve_state: str = "DO NOT APPROVE"
     projection_model: str = "baseline"
+    squad_risk_profiles: dict[int, RiskProfile] = field(default_factory=dict)
 
 
 def _name(names: dict[int, str], player_id: int) -> str:
@@ -97,6 +99,11 @@ def build_weekly_report(
     if points_hit > 0 and approve:
         approve_state += f" (accepts a -{points_hit} hit)"
 
+    squad_projections = {
+        pid: projections_1gw[pid] for pid in [p.element_id for p in squad_state.picks] if pid in projections_1gw
+    }
+    squad_risk_profiles = classify_squad_risk(squad_projections)
+
     return WeeklyReport(
         team_id=team_id,
         gameweek=gameweek,
@@ -112,6 +119,7 @@ def build_weekly_report(
         what_would_change_this=what_would_change,
         approve_state=approve_state,
         projection_model=projection_model,
+        squad_risk_profiles=squad_risk_profiles,
     )
 
 
@@ -149,7 +157,8 @@ def render_markdown(report: WeeklyReport) -> str:
             lines.append(
                 f"- Sell **{_name(names, m.sell_player_id)}** "
                 f"(sell value £{m.sell_value_tenths / 10:.1f}m) -> "
-                f"Buy **{_name(names, m.buy_player_id)}** (£{m.buy_price_tenths / 10:.1f}m)"
+                f"Buy **{_name(names, m.buy_player_id)}** (£{m.buy_price_tenths / 10:.1f}m) "
+                f"-- risk: **{m.buy_risk_tier.value}**"
             )
     lines.append(f"- Transfer cost: **-{r.points_hit} points**")
     lines.append(f"- Resulting bank: £{r.resulting_bank_tenths / 10:.1f}m")
@@ -161,8 +170,10 @@ def render_markdown(report: WeeklyReport) -> str:
 
     lines.append("## Best alternative options")
     for alt in [s for s in report.transfer_scenarios if s is not r][:4]:
+        risk_tags = ", ".join(m.buy_risk_tier.value for m in alt.moves) or "n/a"
         lines.append(
-            f"- {alt.label}: net 5-GW gain {alt.net_ep_gain_5gw:+.2f}, hit -{alt.points_hit}"
+            f"- {alt.label}: net 5-GW gain {alt.net_ep_gain_5gw:+.2f}, hit -{alt.points_hit}, "
+            f"risk: {risk_tags}"
         )
     lines.append("")
 
@@ -185,14 +196,27 @@ def render_markdown(report: WeeklyReport) -> str:
     lines.append("")
 
     lines.append("## Strategy comparison")
-    lines.append("| Strategy | Expected pts | Floor | Ceiling |")
-    lines.append("|---|---|---|---|")
+    lines.append("| Strategy | Expected pts | Floor | Ceiling | Risk-adjusted score |")
+    lines.append("|---|---|---|---|---|")
     for strat, lineup in report.lineups_by_strategy.items():
+        ra_score = (
+            f"{lineup.total_risk_adjusted_score} (aversion={lineup.risk_aversion})"
+            if lineup.total_risk_adjusted_score is not None
+            else "n/a"
+        )
         lines.append(
             f"| {strat} | {lineup.total_expected_points} | {lineup.total_floor_points} | "
-            f"{lineup.total_ceiling_points} |"
+            f"{lineup.total_ceiling_points} | {ra_score} |"
         )
     lines.append("")
+    if any(lineup.total_risk_adjusted_score is not None for lineup in report.lineups_by_strategy.values()):
+        lines.append(
+            "> `risk_adjusted` picks captaincy specifically to minimise the extra variance a "
+            "captaincy multiplier adds (see `risk/portfolio.py`) -- it can name a different "
+            "captain than the other strategies even when its starting XI is identical to "
+            "`balanced`'s."
+        )
+        lines.append("")
 
     lines.append(f"## Confidence: {report.confidence:.0%}")
     lines.append("")
@@ -204,6 +228,28 @@ def render_markdown(report: WeeklyReport) -> str:
     lines.append("## What would change this recommendation")
     for item in report.what_would_change_this:
         lines.append(f"- {item}")
+    lines.append("")
+
+    lines.append("## Squad risk profile")
+    lines.append(
+        "Safe/balanced/risky classification per player (see `risk/classification.py`) -- "
+        "based on how wide the model's floor-to-ceiling spread is relative to its expected "
+        "points, with injury doubts, rotation risk, and blank gameweeks always counting as "
+        "at least as risky as the numbers alone suggest."
+    )
+    lines.append("")
+    counts = tier_counts(report.squad_risk_profiles)
+    lines.append(
+        f"**{counts[RiskTier.SAFE]} safe, {counts[RiskTier.BALANCED]} balanced, "
+        f"{counts[RiskTier.RISKY]} risky** (of {len(report.squad_risk_profiles)} squad players with a projection)."
+    )
+    lines.append("")
+    lines.append("| Player | Risk | Reasons |")
+    lines.append("|---|---|---|")
+    for pid, profile in sorted(
+        report.squad_risk_profiles.items(), key=lambda kv: kv[1].tier.value
+    ):
+        lines.append(f"| {_name(names, pid)} | {profile.tier.value} | {'; '.join(profile.reasons)} |")
     lines.append("")
 
     lines.append("## Squad state")
@@ -241,6 +287,10 @@ def save_report(report: WeeklyReport, reports_dir: Path) -> tuple[Path, Path]:
         },
         "key_risks": report.key_risks,
         "what_would_change_this": report.what_would_change_this,
+        "squad_risk_profiles": {
+            str(pid): json.loads(profile.model_dump_json())
+            for pid, profile in report.squad_risk_profiles.items()
+        },
     }
     json_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     return md_path, json_path
