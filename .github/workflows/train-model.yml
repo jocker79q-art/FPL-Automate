@@ -44,7 +44,7 @@ jobs:
         run: |
           git config user.name "fpl-automate-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add models/ reports/model_backtest.md reports/model_backtest.json
+          git add models/ reports/model_backtest.md reports/model_backtest.json reports/risk_validation.md
           if git diff --cached --quiet; then
             echo "No changes to commit."
             exit 0

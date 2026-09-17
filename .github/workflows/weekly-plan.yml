@@ -59,8 +59,9 @@ jobs:
         # that can land close to this one (and either can also be run
         # manually at any time) -- a plain `git push` failing here isn't
         # a real conflict (the two workflows touch disjoint files: reports/
-        # + data/fpl_automate.db here, models/ + reports/model_backtest.*
-        # there), just a rejected non-fast-forward push, so rebasing onto
+        # + data/fpl_automate.db here, models/ + reports/model_backtest.* +
+        # reports/risk_validation.md there), just a rejected non-fast-forward
+        # push, so rebasing onto
         # whatever the other workflow just pushed and retrying is safe.
         run: |
           git config user.name "fpl-automate-bot"
