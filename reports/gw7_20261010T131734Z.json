@@ -1,0 +1,545 @@
+{
+  "team_id": 9242093,
+  "gameweek": 7,
+  "generated_at": "2026-10-10T13:17:34.551300+00:00",
+  "approve_state": "APPROVE",
+  "projection_model": "ml",
+  "confidence": 0.98,
+  "recommended_scenario": {
+    "label": "Scott -> Szoboszlai, Vuskovic -> White (both free)",
+    "moves": [
+      {
+        "sell_player_id": 69,
+        "buy_player_id": 368,
+        "sell_value_tenths": 60,
+        "buy_price_tenths": 69,
+        "buy_risk_tier": "balanced"
+      },
+      {
+        "sell_player_id": 504,
+        "buy_player_id": 10,
+        "sell_value_tenths": 50,
+        "buy_price_tenths": 54,
+        "buy_risk_tier": "risky"
+      }
+    ],
+    "free_transfers_used": 2,
+    "paid_transfers": 0,
+    "points_hit": 0,
+    "resulting_bank_tenths": 30,
+    "baseline_ep_1gw": 67.59,
+    "new_ep_1gw": 75.35,
+    "baseline_ep_5gw": 323.45,
+    "new_ep_5gw": 363.71,
+    "ep_gain_1gw": 7.76,
+    "ep_gain_5gw": 40.26,
+    "net_ep_gain_5gw": 40.26,
+    "rationale": "Greedy 2nd transfer on top of the best single transfer found.",
+    "risk_notes": [],
+    "recommended": true
+  },
+  "transfer_scenarios": [
+    {
+      "label": "Scott -> Szoboszlai, Vuskovic -> White (both free)",
+      "moves": [
+        {
+          "sell_player_id": 69,
+          "buy_player_id": 368,
+          "sell_value_tenths": 60,
+          "buy_price_tenths": 69,
+          "buy_risk_tier": "balanced"
+        },
+        {
+          "sell_player_id": 504,
+          "buy_player_id": 10,
+          "sell_value_tenths": 50,
+          "buy_price_tenths": 54,
+          "buy_risk_tier": "risky"
+        }
+      ],
+      "free_transfers_used": 2,
+      "paid_transfers": 0,
+      "points_hit": 0,
+      "resulting_bank_tenths": 30,
+      "baseline_ep_1gw": 67.59,
+      "new_ep_1gw": 75.35,
+      "baseline_ep_5gw": 323.45,
+      "new_ep_5gw": 363.71,
+      "ep_gain_1gw": 7.76,
+      "ep_gain_5gw": 40.26,
+      "net_ep_gain_5gw": 40.26,
+      "rationale": "Greedy 2nd transfer on top of the best single transfer found.",
+      "risk_notes": [],
+      "recommended": true
+    },
+    {
+      "label": "Scott -> Szoboszlai (free)",
+      "moves": [
+        {
+          "sell_player_id": 69,
+          "buy_player_id": 368,
+          "sell_value_tenths": 60,
+          "buy_price_tenths": 69,
+          "buy_risk_tier": "balanced"
+        }
+      ],
+      "free_transfers_used": 1,
+      "paid_transfers": 0,
+      "points_hit": 0,
+      "resulting_bank_tenths": 34,
+      "baseline_ep_1gw": 67.59,
+      "new_ep_1gw": 72.51,
+      "baseline_ep_5gw": 323.45,
+      "new_ep_5gw": 351.1,
+      "ep_gain_1gw": 4.92,
+      "ep_gain_5gw": 27.65,
+      "net_ep_gain_5gw": 27.65,
+      "rationale": "Projected Scott 10.7 vs Szoboszlai 43.4 pts over the next 5 GWs (best-XI impact, not raw player comparison).",
+      "risk_notes": [
+        "Szoboszlai: small_sample"
+      ],
+      "recommended": true
+    },
+    {
+      "label": "Vuskovic -> White (free)",
+      "moves": [
+        {
+          "sell_player_id": 504,
+          "buy_player_id": 10,
+          "sell_value_tenths": 50,
+          "buy_price_tenths": 54,
+          "buy_risk_tier": "risky"
+        }
+      ],
+      "free_transfers_used": 1,
+      "paid_transfers": 0,
+      "points_hit": 0,
+      "resulting_bank_tenths": 39,
+      "baseline_ep_1gw": 67.59,
+      "new_ep_1gw": 71.19,
+      "baseline_ep_5gw": 323.45,
+      "new_ep_5gw": 338.91,
+      "ep_gain_1gw": 3.6,
+      "ep_gain_5gw": 15.46,
+      "net_ep_gain_5gw": 15.46,
+      "rationale": "Projected Vuskovic 14.3 vs White 33.4 pts over the next 5 GWs (best-XI impact, not raw player comparison).",
+      "risk_notes": [
+        "White: small_sample",
+        "White: injury_or_availability_doubt"
+      ],
+      "recommended": true
+    },
+    {
+      "label": "Bogle -> White (free)",
+      "moves": [
+        {
+          "sell_player_id": 330,
+          "buy_player_id": 10,
+          "sell_value_tenths": 45,
+          "buy_price_tenths": 54,
+          "buy_risk_tier": "risky"
+        }
+      ],
+      "free_transfers_used": 1,
+      "paid_transfers": 0,
+      "points_hit": 0,
+      "resulting_bank_tenths": 34,
+      "baseline_ep_1gw": 67.59,
+      "new_ep_1gw": 71.19,
+      "baseline_ep_5gw": 323.45,
+      "new_ep_5gw": 338.91,
+      "ep_gain_1gw": 3.6,
+      "ep_gain_5gw": 15.46,
+      "net_ep_gain_5gw": 15.46,
+      "rationale": "Projected Bogle 16.9 vs White 33.4 pts over the next 5 GWs (best-XI impact, not raw player comparison).",
+      "risk_notes": [
+        "White: small_sample",
+        "White: injury_or_availability_doubt"
+      ],
+      "recommended": true
+    },
+    {
+      "label": "Scott -> Saka (free)",
+      "moves": [
+        {
+          "sell_player_id": 69,
+          "buy_player_id": 12,
+          "sell_value_tenths": 60,
+          "buy_price_tenths": 96,
+          "buy_risk_tier": "risky"
+        }
+      ],
+      "free_transfers_used": 1,
+      "paid_transfers": 0,
+      "points_hit": 0,
+      "resulting_bank_tenths": 7,
+      "baseline_ep_1gw": 67.59,
+      "new_ep_1gw": 70.13,
+      "baseline_ep_5gw": 323.45,
+      "new_ep_5gw": 336.58,
+      "ep_gain_1gw": 2.54,
+      "ep_gain_5gw": 13.13,
+      "net_ep_gain_5gw": 13.13,
+      "rationale": "Projected Scott 10.7 vs Saka 31.1 pts over the next 5 GWs (best-XI impact, not raw player comparison).",
+      "risk_notes": [
+        "Saka: small_sample"
+      ],
+      "recommended": true
+    },
+    {
+      "label": "Mendy -> White (free)",
+      "moves": [
+        {
+          "sell_player_id": 586,
+          "buy_player_id": 10,
+          "sell_value_tenths": 40,
+          "buy_price_tenths": 54,
+          "buy_risk_tier": "risky"
+        }
+      ],
+      "free_transfers_used": 1,
+      "paid_transfers": 0,
+      "points_hit": 0,
+      "resulting_bank_tenths": 29,
+      "baseline_ep_1gw": 67.59,
+      "new_ep_1gw": 69.6,
+      "baseline_ep_5gw": 323.45,
+      "new_ep_5gw": 336.06,
+      "ep_gain_1gw": 2.01,
+      "ep_gain_5gw": 12.61,
+      "net_ep_gain_5gw": 12.61,
+      "rationale": "Projected Mendy 20.8 vs White 33.4 pts over the next 5 GWs (best-XI impact, not raw player comparison).",
+      "risk_notes": [
+        "White: small_sample",
+        "White: injury_or_availability_doubt"
+      ],
+      "recommended": true
+    },
+    {
+      "label": "Roll transfer (make no changes)",
+      "moves": [],
+      "free_transfers_used": 0,
+      "paid_transfers": 0,
+      "points_hit": 0,
+      "resulting_bank_tenths": 43,
+      "baseline_ep_1gw": 67.59,
+      "new_ep_1gw": 67.59,
+      "baseline_ep_5gw": 323.45,
+      "new_ep_5gw": 323.45,
+      "ep_gain_1gw": 0.0,
+      "ep_gain_5gw": 0.0,
+      "net_ep_gain_5gw": 0.0,
+      "rationale": "Keeps 3 free transfer(s) available next gameweek. Always the safe default when no transfer clears the minimum recommended net gain.",
+      "risk_notes": [],
+      "recommended": false
+    }
+  ],
+  "lineups_by_strategy": {
+    "conservative": {
+      "strategy": "conservative",
+      "starting_xi": [
+        1,
+        68,
+        15,
+        316,
+        165,
+        411,
+        586,
+        98,
+        115,
+        368,
+        10
+      ],
+      "bench_order": [
+        154,
+        330,
+        279,
+        572
+      ],
+      "captain_id": 1,
+      "vice_captain_id": 316,
+      "formation": "3-4-3",
+      "total_expected_points": 68.81,
+      "total_floor_points": 8.95,
+      "total_ceiling_points": 114.61,
+      "risk_aversion": null,
+      "total_risk_adjusted_score": null
+    },
+    "balanced": {
+      "strategy": "balanced",
+      "starting_xi": [
+        1,
+        279,
+        68,
+        154,
+        316,
+        165,
+        411,
+        586,
+        115,
+        368,
+        10
+      ],
+      "bench_order": [
+        15,
+        330,
+        98,
+        572
+      ],
+      "captain_id": 368,
+      "vice_captain_id": 411,
+      "formation": "4-3-3",
+      "total_expected_points": 75.35,
+      "total_floor_points": 7.39,
+      "total_ceiling_points": 120.16,
+      "risk_aversion": null,
+      "total_risk_adjusted_score": null
+    },
+    "aggressive": {
+      "strategy": "aggressive",
+      "starting_xi": [
+        279,
+        68,
+        154,
+        15,
+        316,
+        165,
+        411,
+        572,
+        115,
+        368,
+        10
+      ],
+      "bench_order": [
+        98,
+        586,
+        330,
+        1
+      ],
+      "captain_id": 411,
+      "vice_captain_id": 368,
+      "formation": "3-4-3",
+      "total_expected_points": 73.67,
+      "total_floor_points": 8.28,
+      "total_ceiling_points": 124.55,
+      "risk_aversion": null,
+      "total_risk_adjusted_score": null
+    },
+    "risk_adjusted": {
+      "strategy": "risk_adjusted",
+      "starting_xi": [
+        1,
+        330,
+        279,
+        68,
+        316,
+        165,
+        586,
+        98,
+        115,
+        368,
+        10
+      ],
+      "bench_order": [
+        15,
+        154,
+        411,
+        572
+      ],
+      "captain_id": 1,
+      "vice_captain_id": 330,
+      "formation": "5-3-2",
+      "total_expected_points": 65.45,
+      "total_floor_points": 7.02,
+      "total_ceiling_points": 105.35,
+      "risk_aversion": 1.0,
+      "total_risk_adjusted_score": -71.54
+    }
+  },
+  "key_risks": [
+    "Raya: small_sample",
+    "Ajayi: small_sample, injury_or_availability_doubt",
+    "Tavernier: small_sample",
+    "Palmer: small_sample, injury_or_availability_doubt",
+    "Emersonn: small_sample, injury_or_availability_doubt",
+    "Jo\u00e3o Pedro: small_sample, injury_or_availability_doubt",
+    "Haaland: small_sample",
+    "Mendy: small_sample, injury_or_availability_doubt",
+    "De Cuyper: small_sample",
+    "Szoboszlai: small_sample"
+  ],
+  "what_would_change_this": [
+    "Late injury/suspension news on any starter or the captain before the deadline.",
+    "A confirmed change to predicted lineups (e.g. a key player ruled out in a press conference) after this report was generated.",
+    "A price change that alters what you can afford -- re-run before the deadline if it's been more than a few hours.",
+    "If the sell candidate's price rises before you act, your effective budget shrinks and this exact transfer may no longer be affordable."
+  ],
+  "squad_risk_profiles": {
+    "1": {
+      "player_id": 1,
+      "tier": "balanced",
+      "std_dev": 2.255,
+      "coefficient_of_variation": 0.51,
+      "reasons": [
+        "Moderate spread relative to expectation (CV=0.51).",
+        "Limited appearances this season -- the projection itself is less certain."
+      ]
+    },
+    "330": {
+      "player_id": 330,
+      "tier": "risky",
+      "std_dev": 2.485,
+      "coefficient_of_variation": 0.661,
+      "reasons": [
+        "Wide spread relative to expectation (CV=0.66).",
+        "Limited appearances this season -- the projection itself is less certain."
+      ]
+    },
+    "279": {
+      "player_id": 279,
+      "tier": "risky",
+      "std_dev": 3.258,
+      "coefficient_of_variation": 0.554,
+      "reasons": [
+        "Moderate spread relative to expectation (CV=0.55).",
+        "Live injury/availability doubt -- real chance of not playing at all.",
+        "Limited appearances this season -- the projection itself is less certain."
+      ]
+    },
+    "504": {
+      "player_id": 504,
+      "tier": "risky",
+      "std_dev": 2.263,
+      "coefficient_of_variation": 0.718,
+      "reasons": [
+        "Wide spread relative to expectation (CV=0.72).",
+        "Limited appearances this season -- the projection itself is less certain."
+      ]
+    },
+    "69": {
+      "player_id": 69,
+      "tier": "risky",
+      "std_dev": 0.0,
+      "coefficient_of_variation": null,
+      "reasons": [
+        "Expected points too low (0.0) for a stable CV estimate.",
+        "Live injury/availability doubt -- real chance of not playing at all.",
+        "Inconsistent minutes when selected -- rotation risk.",
+        "Limited appearances this season -- the projection itself is less certain."
+      ]
+    },
+    "68": {
+      "player_id": 68,
+      "tier": "risky",
+      "std_dev": 3.238,
+      "coefficient_of_variation": 0.61,
+      "reasons": [
+        "Wide spread relative to expectation (CV=0.61).",
+        "Limited appearances this season -- the projection itself is less certain."
+      ]
+    },
+    "154": {
+      "player_id": 154,
+      "tier": "risky",
+      "std_dev": 4.366,
+      "coefficient_of_variation": 0.935,
+      "reasons": [
+        "Wide spread relative to expectation (CV=0.94).",
+        "Live injury/availability doubt -- real chance of not playing at all.",
+        "Limited appearances this season -- the projection itself is less certain."
+      ]
+    },
+    "15": {
+      "player_id": 15,
+      "tier": "risky",
+      "std_dev": 3.702,
+      "coefficient_of_variation": 0.819,
+      "reasons": [
+        "Wide spread relative to expectation (CV=0.82).",
+        "Limited appearances this season -- the projection itself is less certain."
+      ]
+    },
+    "316": {
+      "player_id": 316,
+      "tier": "risky",
+      "std_dev": 3.433,
+      "coefficient_of_variation": 0.673,
+      "reasons": [
+        "Wide spread relative to expectation (CV=0.67).",
+        "Live injury/availability doubt -- real chance of not playing at all.",
+        "Limited appearances this season -- the projection itself is less certain."
+      ]
+    },
+    "165": {
+      "player_id": 165,
+      "tier": "risky",
+      "std_dev": 3.332,
+      "coefficient_of_variation": 0.589,
+      "reasons": [
+        "Moderate spread relative to expectation (CV=0.59).",
+        "Live injury/availability doubt -- real chance of not playing at all.",
+        "Limited appearances this season -- the projection itself is less certain."
+      ]
+    },
+    "411": {
+      "player_id": 411,
+      "tier": "balanced",
+      "std_dev": 4.9,
+      "coefficient_of_variation": 0.578,
+      "reasons": [
+        "Moderate spread relative to expectation (CV=0.58).",
+        "Limited appearances this season -- the projection itself is less certain."
+      ]
+    },
+    "572": {
+      "player_id": 572,
+      "tier": "risky",
+      "std_dev": 2.376,
+      "coefficient_of_variation": 0.647,
+      "reasons": [
+        "Wide spread relative to expectation (CV=0.65).",
+        "Limited appearances this season -- the projection itself is less certain."
+      ]
+    },
+    "586": {
+      "player_id": 586,
+      "tier": "risky",
+      "std_dev": 3.176,
+      "coefficient_of_variation": 0.594,
+      "reasons": [
+        "Moderate spread relative to expectation (CV=0.59).",
+        "Live injury/availability doubt -- real chance of not playing at all.",
+        "Limited appearances this season -- the projection itself is less certain."
+      ]
+    },
+    "98": {
+      "player_id": 98,
+      "tier": "risky",
+      "std_dev": 3.074,
+      "coefficient_of_variation": 0.842,
+      "reasons": [
+        "Wide spread relative to expectation (CV=0.84).",
+        "Limited appearances this season -- the projection itself is less certain."
+      ]
+    },
+    "115": {
+      "player_id": 115,
+      "tier": "risky",
+      "std_dev": 3.753,
+      "coefficient_of_variation": 0.63,
+      "reasons": [
+        "Wide spread relative to expectation (CV=0.63).",
+        "Limited appearances this season -- the projection itself is less certain."
+      ]
+    }
+  },
+  "fixture_correlation": {
+    "same_team_rho": 0.0297,
+    "opponent_rho": -0.0349,
+    "n_same_team_gameweeks": 38,
+    "n_opponent_gameweeks": 38
+  },
+  "starting_xi_independent_variance": 149.17624950611827,
+  "starting_xi_correlated_variance": 150.0056884737847,
+  "transfer_timing": null
+}
