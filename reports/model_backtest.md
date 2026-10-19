@@ -1,6 +1,6 @@
 # Projection models: walk-forward backtest report
 
-Generated: 2026-10-12T14:43:04.101090+00:00
+Generated: 2026-10-19T12:28:02.085015+00:00
 ML model trained on: 2021-22, 2022-23, 2023-24, 2024-25
 Backtested on (held out entirely from ML training): 2025-26
 
