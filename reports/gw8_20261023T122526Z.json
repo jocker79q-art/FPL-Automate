@@ -1,0 +1,515 @@
+{
+  "team_id": 9242093,
+  "gameweek": 8,
+  "generated_at": "2026-10-23T12:25:26.710999+00:00",
+  "approve_state": "APPROVE",
+  "projection_model": "ml",
+  "confidence": 0.97,
+  "recommended_scenario": {
+    "label": "Mendy -> Hall, Janelt -> Barnes (both free)",
+    "moves": [
+      {
+        "sell_player_id": 586,
+        "buy_player_id": 449,
+        "sell_value_tenths": 40,
+        "buy_price_tenths": 53,
+        "buy_risk_tier": "risky"
+      },
+      {
+        "sell_player_id": 98,
+        "buy_player_id": 453,
+        "sell_value_tenths": 50,
+        "buy_price_tenths": 61,
+        "buy_risk_tier": "balanced"
+      }
+    ],
+    "free_transfers_used": 2,
+    "paid_transfers": 0,
+    "points_hit": 0,
+    "resulting_bank_tenths": 1,
+    "baseline_ep_1gw": 60.91,
+    "new_ep_1gw": 64.79,
+    "baseline_ep_5gw": 282.0,
+    "new_ep_5gw": 306.01,
+    "ep_gain_1gw": 3.88,
+    "ep_gain_5gw": 24.01,
+    "net_ep_gain_5gw": 24.01,
+    "rationale": "Greedy 2nd transfer on top of the best single transfer found.",
+    "risk_notes": [],
+    "recommended": true
+  },
+  "transfer_scenarios": [
+    {
+      "label": "Mendy -> Hall, Janelt -> Barnes (both free)",
+      "moves": [
+        {
+          "sell_player_id": 586,
+          "buy_player_id": 449,
+          "sell_value_tenths": 40,
+          "buy_price_tenths": 53,
+          "buy_risk_tier": "risky"
+        },
+        {
+          "sell_player_id": 98,
+          "buy_player_id": 453,
+          "sell_value_tenths": 50,
+          "buy_price_tenths": 61,
+          "buy_risk_tier": "balanced"
+        }
+      ],
+      "free_transfers_used": 2,
+      "paid_transfers": 0,
+      "points_hit": 0,
+      "resulting_bank_tenths": 1,
+      "baseline_ep_1gw": 60.91,
+      "new_ep_1gw": 64.79,
+      "baseline_ep_5gw": 282.0,
+      "new_ep_5gw": 306.01,
+      "ep_gain_1gw": 3.88,
+      "ep_gain_5gw": 24.01,
+      "net_ep_gain_5gw": 24.01,
+      "rationale": "Greedy 2nd transfer on top of the best single transfer found.",
+      "risk_notes": [],
+      "recommended": true
+    },
+    {
+      "label": "Mendy -> Hall (free)",
+      "moves": [
+        {
+          "sell_player_id": 586,
+          "buy_player_id": 449,
+          "sell_value_tenths": 40,
+          "buy_price_tenths": 53,
+          "buy_risk_tier": "risky"
+        }
+      ],
+      "free_transfers_used": 1,
+      "paid_transfers": 0,
+      "points_hit": 0,
+      "resulting_bank_tenths": 12,
+      "baseline_ep_1gw": 60.91,
+      "new_ep_1gw": 62.51,
+      "baseline_ep_5gw": 282.0,
+      "new_ep_5gw": 294.02,
+      "ep_gain_1gw": 1.6,
+      "ep_gain_5gw": 12.02,
+      "net_ep_gain_5gw": 12.02,
+      "rationale": "Projected Mendy 8.4 vs Hall 26.2 pts over the next 5 GWs (best-XI impact, not raw player comparison).",
+      "risk_notes": [],
+      "recommended": true
+    },
+    {
+      "label": "Vuskovic -> Hall (free)",
+      "moves": [
+        {
+          "sell_player_id": 504,
+          "buy_player_id": 449,
+          "sell_value_tenths": 50,
+          "buy_price_tenths": 53,
+          "buy_risk_tier": "risky"
+        }
+      ],
+      "free_transfers_used": 1,
+      "paid_transfers": 0,
+      "points_hit": 0,
+      "resulting_bank_tenths": 22,
+      "baseline_ep_1gw": 60.91,
+      "new_ep_1gw": 62.51,
+      "baseline_ep_5gw": 282.0,
+      "new_ep_5gw": 294.02,
+      "ep_gain_1gw": 1.6,
+      "ep_gain_5gw": 12.02,
+      "net_ep_gain_5gw": 12.02,
+      "rationale": "Projected Vuskovic 10.2 vs Hall 26.2 pts over the next 5 GWs (best-XI impact, not raw player comparison).",
+      "risk_notes": [],
+      "recommended": true
+    },
+    {
+      "label": "Ajayi -> Hall (free)",
+      "moves": [
+        {
+          "sell_player_id": 279,
+          "buy_player_id": 449,
+          "sell_value_tenths": 41,
+          "buy_price_tenths": 53,
+          "buy_risk_tier": "risky"
+        }
+      ],
+      "free_transfers_used": 1,
+      "paid_transfers": 0,
+      "points_hit": 0,
+      "resulting_bank_tenths": 13,
+      "baseline_ep_1gw": 60.91,
+      "new_ep_1gw": 62.45,
+      "baseline_ep_5gw": 282.0,
+      "new_ep_5gw": 294.02,
+      "ep_gain_1gw": 1.54,
+      "ep_gain_5gw": 12.02,
+      "net_ep_gain_5gw": 12.02,
+      "rationale": "Projected Ajayi 14.2 vs Hall 26.2 pts over the next 5 GWs (best-XI impact, not raw player comparison).",
+      "risk_notes": [],
+      "recommended": true
+    },
+    {
+      "label": "Janelt -> Barnes (free)",
+      "moves": [
+        {
+          "sell_player_id": 98,
+          "buy_player_id": 453,
+          "sell_value_tenths": 50,
+          "buy_price_tenths": 61,
+          "buy_risk_tier": "balanced"
+        }
+      ],
+      "free_transfers_used": 1,
+      "paid_transfers": 0,
+      "points_hit": 0,
+      "resulting_bank_tenths": 14,
+      "baseline_ep_1gw": 60.91,
+      "new_ep_1gw": 63.25,
+      "baseline_ep_5gw": 282.0,
+      "new_ep_5gw": 293.99,
+      "ep_gain_1gw": 2.34,
+      "ep_gain_5gw": 11.99,
+      "net_ep_gain_5gw": 11.99,
+      "rationale": "Projected Janelt 12.5 vs Barnes 29.5 pts over the next 5 GWs (best-XI impact, not raw player comparison).",
+      "risk_notes": [],
+      "recommended": true
+    },
+    {
+      "label": "Mendy -> Van Hecke (free)",
+      "moves": [
+        {
+          "sell_player_id": 586,
+          "buy_player_id": 112,
+          "sell_value_tenths": 40,
+          "buy_price_tenths": 49,
+          "buy_risk_tier": "risky"
+        }
+      ],
+      "free_transfers_used": 1,
+      "paid_transfers": 0,
+      "points_hit": 0,
+      "resulting_bank_tenths": 16,
+      "baseline_ep_1gw": 60.91,
+      "new_ep_1gw": 62.53,
+      "baseline_ep_5gw": 282.0,
+      "new_ep_5gw": 293.64,
+      "ep_gain_1gw": 1.62,
+      "ep_gain_5gw": 11.64,
+      "net_ep_gain_5gw": 11.64,
+      "rationale": "Projected Mendy 8.4 vs Van Hecke 25.9 pts over the next 5 GWs (best-XI impact, not raw player comparison).",
+      "risk_notes": [
+        "Van Hecke: injury_or_availability_doubt"
+      ],
+      "recommended": true
+    },
+    {
+      "label": "Roll transfer (make no changes)",
+      "moves": [],
+      "free_transfers_used": 0,
+      "paid_transfers": 0,
+      "points_hit": 0,
+      "resulting_bank_tenths": 25,
+      "baseline_ep_1gw": 60.91,
+      "new_ep_1gw": 60.91,
+      "baseline_ep_5gw": 282.0,
+      "new_ep_5gw": 282.0,
+      "ep_gain_1gw": 0.0,
+      "ep_gain_5gw": 0.0,
+      "net_ep_gain_5gw": 0.0,
+      "rationale": "Keeps 3 free transfer(s) available next gameweek. Always the safe default when no transfer clears the minimum recommended net gain.",
+      "risk_notes": [],
+      "recommended": false
+    }
+  ],
+  "lineups_by_strategy": {
+    "conservative": {
+      "strategy": "conservative",
+      "starting_xi": [
+        1,
+        330,
+        504,
+        40,
+        154,
+        15,
+        165,
+        411,
+        316,
+        449,
+        453
+      ],
+      "bench_order": [
+        279,
+        115,
+        68,
+        572
+      ],
+      "captain_id": 165,
+      "vice_captain_id": 411,
+      "formation": "3-4-3",
+      "total_expected_points": 59.5,
+      "total_floor_points": 8.83,
+      "total_ceiling_points": 110.26,
+      "risk_aversion": null,
+      "total_risk_adjusted_score": null
+    },
+    "balanced": {
+      "strategy": "balanced",
+      "starting_xi": [
+        1,
+        330,
+        115,
+        40,
+        154,
+        15,
+        165,
+        411,
+        316,
+        449,
+        453
+      ],
+      "bench_order": [
+        279,
+        68,
+        504,
+        572
+      ],
+      "captain_id": 411,
+      "vice_captain_id": 40,
+      "formation": "3-4-3",
+      "total_expected_points": 64.79,
+      "total_floor_points": 8.75,
+      "total_ceiling_points": 116.55,
+      "risk_aversion": null,
+      "total_risk_adjusted_score": null
+    },
+    "aggressive": {
+      "strategy": "aggressive",
+      "starting_xi": [
+        330,
+        115,
+        40,
+        154,
+        15,
+        165,
+        411,
+        572,
+        316,
+        449,
+        453
+      ],
+      "bench_order": [
+        68,
+        504,
+        279,
+        1
+      ],
+      "captain_id": 154,
+      "vice_captain_id": 411,
+      "formation": "3-4-3",
+      "total_expected_points": 62.36,
+      "total_floor_points": 8.6,
+      "total_ceiling_points": 117.44,
+      "risk_aversion": null,
+      "total_risk_adjusted_score": null
+    },
+    "risk_adjusted": {
+      "strategy": "risk_adjusted",
+      "starting_xi": [
+        1,
+        330,
+        279,
+        504,
+        40,
+        15,
+        165,
+        316,
+        68,
+        449,
+        453
+      ],
+      "bench_order": [
+        411,
+        115,
+        154,
+        572
+      ],
+      "captain_id": 1,
+      "vice_captain_id": 279,
+      "formation": "4-4-2",
+      "total_expected_points": 50.8,
+      "total_floor_points": 6.96,
+      "total_ceiling_points": 98.76,
+      "risk_aversion": 1.0,
+      "total_risk_adjusted_score": -69.03
+    }
+  },
+  "key_risks": [
+    "Palmer: injury_or_availability_doubt",
+    "Jo\u00e3o Pedro: injury_or_availability_doubt",
+    "Haaland: injury_or_availability_doubt",
+    "Emersonn: injury_or_availability_doubt"
+  ],
+  "what_would_change_this": [
+    "Late injury/suspension news on any starter or the captain before the deadline.",
+    "A confirmed change to predicted lineups (e.g. a key player ruled out in a press conference) after this report was generated.",
+    "A price change that alters what you can afford -- re-run before the deadline if it's been more than a few hours.",
+    "If the sell candidate's price rises before you act, your effective budget shrinks and this exact transfer may no longer be affordable."
+  ],
+  "squad_risk_profiles": {
+    "1": {
+      "player_id": 1,
+      "tier": "balanced",
+      "std_dev": 2.185,
+      "coefficient_of_variation": 0.599,
+      "reasons": [
+        "Moderate spread relative to expectation (CV=0.60)."
+      ]
+    },
+    "330": {
+      "player_id": 330,
+      "tier": "risky",
+      "std_dev": 3.035,
+      "coefficient_of_variation": 0.838,
+      "reasons": [
+        "Wide spread relative to expectation (CV=0.84)."
+      ]
+    },
+    "279": {
+      "player_id": 279,
+      "tier": "risky",
+      "std_dev": 2.497,
+      "coefficient_of_variation": 0.724,
+      "reasons": [
+        "Wide spread relative to expectation (CV=0.72).",
+        "Live injury/availability doubt -- real chance of not playing at all."
+      ]
+    },
+    "504": {
+      "player_id": 504,
+      "tier": "risky",
+      "std_dev": 2.848,
+      "coefficient_of_variation": 1.646,
+      "reasons": [
+        "Wide spread relative to expectation (CV=1.65)."
+      ]
+    },
+    "115": {
+      "player_id": 115,
+      "tier": "risky",
+      "std_dev": 3.952,
+      "coefficient_of_variation": 0.923,
+      "reasons": [
+        "Wide spread relative to expectation (CV=0.92)."
+      ]
+    },
+    "98": {
+      "player_id": 98,
+      "tier": "risky",
+      "std_dev": 0.0,
+      "coefficient_of_variation": null,
+      "reasons": [
+        "Expected points too low (0.0) for a stable CV estimate.",
+        "Live injury/availability doubt -- real chance of not playing at all.",
+        "Inconsistent minutes when selected -- rotation risk."
+      ]
+    },
+    "40": {
+      "player_id": 40,
+      "tier": "risky",
+      "std_dev": 3.956,
+      "coefficient_of_variation": 0.629,
+      "reasons": [
+        "Wide spread relative to expectation (CV=0.63)."
+      ]
+    },
+    "154": {
+      "player_id": 154,
+      "tier": "risky",
+      "std_dev": 4.444,
+      "coefficient_of_variation": 0.773,
+      "reasons": [
+        "Wide spread relative to expectation (CV=0.77).",
+        "Live injury/availability doubt -- real chance of not playing at all."
+      ]
+    },
+    "15": {
+      "player_id": 15,
+      "tier": "risky",
+      "std_dev": 3.858,
+      "coefficient_of_variation": 0.784,
+      "reasons": [
+        "Wide spread relative to expectation (CV=0.78)."
+      ]
+    },
+    "165": {
+      "player_id": 165,
+      "tier": "risky",
+      "std_dev": 2.887,
+      "coefficient_of_variation": 0.54,
+      "reasons": [
+        "Moderate spread relative to expectation (CV=0.54).",
+        "Live injury/availability doubt -- real chance of not playing at all."
+      ]
+    },
+    "411": {
+      "player_id": 411,
+      "tier": "risky",
+      "std_dev": 4.268,
+      "coefficient_of_variation": 0.528,
+      "reasons": [
+        "Moderate spread relative to expectation (CV=0.53).",
+        "Live injury/availability doubt -- real chance of not playing at all."
+      ]
+    },
+    "572": {
+      "player_id": 572,
+      "tier": "risky",
+      "std_dev": 2.415,
+      "coefficient_of_variation": 0.678,
+      "reasons": [
+        "Wide spread relative to expectation (CV=0.68)."
+      ]
+    },
+    "316": {
+      "player_id": 316,
+      "tier": "risky",
+      "std_dev": 2.86,
+      "coefficient_of_variation": 0.71,
+      "reasons": [
+        "Wide spread relative to expectation (CV=0.71).",
+        "Live injury/availability doubt -- real chance of not playing at all."
+      ]
+    },
+    "586": {
+      "player_id": 586,
+      "tier": "risky",
+      "std_dev": 0.0,
+      "coefficient_of_variation": null,
+      "reasons": [
+        "Expected points too low (0.0) for a stable CV estimate.",
+        "Live injury/availability doubt -- real chance of not playing at all.",
+        "Inconsistent minutes when selected -- rotation risk."
+      ]
+    },
+    "68": {
+      "player_id": 68,
+      "tier": "risky",
+      "std_dev": 3.16,
+      "coefficient_of_variation": 0.932,
+      "reasons": [
+        "Wide spread relative to expectation (CV=0.93)."
+      ]
+    }
+  },
+  "fixture_correlation": {
+    "same_team_rho": 0.0297,
+    "opponent_rho": -0.0349,
+    "n_same_team_gameweeks": 38,
+    "n_opponent_gameweeks": 38
+  },
+  "starting_xi_independent_variance": 134.7566782646068,
+  "starting_xi_correlated_variance": 138.3391243368883,
+  "transfer_timing": null
+}
