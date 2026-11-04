@@ -1,0 +1,515 @@
+{
+  "team_id": 9242093,
+  "gameweek": 10,
+  "generated_at": "2026-11-04T22:18:04.623513+00:00",
+  "approve_state": "APPROVE",
+  "projection_model": "ml",
+  "confidence": 0.97,
+  "recommended_scenario": {
+    "label": "Vuskovic -> Van Hecke, Jo\u00e3o Pedro -> Thiago (both free)",
+    "moves": [
+      {
+        "sell_player_id": 504,
+        "buy_player_id": 112,
+        "sell_value_tenths": 51,
+        "buy_price_tenths": 50,
+        "buy_risk_tier": "risky"
+      },
+      {
+        "sell_player_id": 165,
+        "buy_player_id": 106,
+        "sell_value_tenths": 77,
+        "buy_price_tenths": 78,
+        "buy_risk_tier": "balanced"
+      }
+    ],
+    "free_transfers_used": 2,
+    "paid_transfers": 0,
+    "points_hit": 0,
+    "resulting_bank_tenths": 1,
+    "baseline_ep_1gw": 58.53,
+    "new_ep_1gw": 63.39,
+    "baseline_ep_5gw": 281.37,
+    "new_ep_5gw": 307.94,
+    "ep_gain_1gw": 4.86,
+    "ep_gain_5gw": 26.57,
+    "net_ep_gain_5gw": 26.57,
+    "rationale": "Greedy 2nd transfer on top of the best single transfer found.",
+    "risk_notes": [],
+    "recommended": true
+  },
+  "transfer_scenarios": [
+    {
+      "label": "Vuskovic -> Van Hecke, Jo\u00e3o Pedro -> Thiago (both free)",
+      "moves": [
+        {
+          "sell_player_id": 504,
+          "buy_player_id": 112,
+          "sell_value_tenths": 51,
+          "buy_price_tenths": 50,
+          "buy_risk_tier": "risky"
+        },
+        {
+          "sell_player_id": 165,
+          "buy_player_id": 106,
+          "sell_value_tenths": 77,
+          "buy_price_tenths": 78,
+          "buy_risk_tier": "balanced"
+        }
+      ],
+      "free_transfers_used": 2,
+      "paid_transfers": 0,
+      "points_hit": 0,
+      "resulting_bank_tenths": 1,
+      "baseline_ep_1gw": 58.53,
+      "new_ep_1gw": 63.39,
+      "baseline_ep_5gw": 281.37,
+      "new_ep_5gw": 307.94,
+      "ep_gain_1gw": 4.86,
+      "ep_gain_5gw": 26.57,
+      "net_ep_gain_5gw": 26.57,
+      "rationale": "Greedy 2nd transfer on top of the best single transfer found.",
+      "risk_notes": [],
+      "recommended": true
+    },
+    {
+      "label": "Vuskovic -> Van Hecke (free)",
+      "moves": [
+        {
+          "sell_player_id": 504,
+          "buy_player_id": 112,
+          "sell_value_tenths": 51,
+          "buy_price_tenths": 50,
+          "buy_risk_tier": "risky"
+        }
+      ],
+      "free_transfers_used": 1,
+      "paid_transfers": 0,
+      "points_hit": 0,
+      "resulting_bank_tenths": 2,
+      "baseline_ep_1gw": 58.53,
+      "new_ep_1gw": 61.42,
+      "baseline_ep_5gw": 281.37,
+      "new_ep_5gw": 297.04,
+      "ep_gain_1gw": 2.89,
+      "ep_gain_5gw": 15.67,
+      "net_ep_gain_5gw": 15.67,
+      "rationale": "Projected Vuskovic 10.2 vs Van Hecke 28.8 pts over the next 5 GWs (best-XI impact, not raw player comparison).",
+      "risk_notes": [
+        "Van Hecke: injury_or_availability_doubt"
+      ],
+      "recommended": true
+    },
+    {
+      "label": "Jo\u00e3o Pedro -> Thiago (free)",
+      "moves": [
+        {
+          "sell_player_id": 165,
+          "buy_player_id": 106,
+          "sell_value_tenths": 77,
+          "buy_price_tenths": 78,
+          "buy_risk_tier": "balanced"
+        }
+      ],
+      "free_transfers_used": 1,
+      "paid_transfers": 0,
+      "points_hit": 0,
+      "resulting_bank_tenths": 0,
+      "baseline_ep_1gw": 58.53,
+      "new_ep_1gw": 60.5,
+      "baseline_ep_5gw": 281.37,
+      "new_ep_5gw": 292.27,
+      "ep_gain_1gw": 1.97,
+      "ep_gain_5gw": 10.9,
+      "net_ep_gain_5gw": 10.9,
+      "rationale": "Projected Jo\u00e3o Pedro 15.9 vs Thiago 28.0 pts over the next 5 GWs (best-XI impact, not raw player comparison).",
+      "risk_notes": [],
+      "recommended": true
+    },
+    {
+      "label": "Jo\u00e3o Pedro -> Evanilson (free)",
+      "moves": [
+        {
+          "sell_player_id": 165,
+          "buy_player_id": 79,
+          "sell_value_tenths": 77,
+          "buy_price_tenths": 64,
+          "buy_risk_tier": "risky"
+        }
+      ],
+      "free_transfers_used": 1,
+      "paid_transfers": 0,
+      "points_hit": 0,
+      "resulting_bank_tenths": 14,
+      "baseline_ep_1gw": 58.53,
+      "new_ep_1gw": 60.17,
+      "baseline_ep_5gw": 281.37,
+      "new_ep_5gw": 289.93,
+      "ep_gain_1gw": 1.64,
+      "ep_gain_5gw": 8.56,
+      "net_ep_gain_5gw": 8.56,
+      "rationale": "Projected Jo\u00e3o Pedro 15.9 vs Evanilson 25.6 pts over the next 5 GWs (best-XI impact, not raw player comparison).",
+      "risk_notes": [],
+      "recommended": true
+    },
+    {
+      "label": "Vuskovic -> Justin (free)",
+      "moves": [
+        {
+          "sell_player_id": 504,
+          "buy_player_id": 332,
+          "sell_value_tenths": 51,
+          "buy_price_tenths": 45,
+          "buy_risk_tier": "risky"
+        }
+      ],
+      "free_transfers_used": 1,
+      "paid_transfers": 0,
+      "points_hit": 0,
+      "resulting_bank_tenths": 7,
+      "baseline_ep_1gw": 58.53,
+      "new_ep_1gw": 60.25,
+      "baseline_ep_5gw": 281.37,
+      "new_ep_5gw": 288.53,
+      "ep_gain_1gw": 1.72,
+      "ep_gain_5gw": 7.16,
+      "net_ep_gain_5gw": 7.16,
+      "rationale": "Projected Vuskovic 10.2 vs Justin 20.2 pts over the next 5 GWs (best-XI impact, not raw player comparison).",
+      "risk_notes": [],
+      "recommended": true
+    },
+    {
+      "label": "Jo\u00e3o Pedro -> Solanke (free)",
+      "moves": [
+        {
+          "sell_player_id": 165,
+          "buy_player_id": 526,
+          "sell_value_tenths": 77,
+          "buy_price_tenths": 58,
+          "buy_risk_tier": "balanced"
+        }
+      ],
+      "free_transfers_used": 1,
+      "paid_transfers": 0,
+      "points_hit": 0,
+      "resulting_bank_tenths": 20,
+      "baseline_ep_1gw": 58.53,
+      "new_ep_1gw": 59.54,
+      "baseline_ep_5gw": 281.37,
+      "new_ep_5gw": 287.36,
+      "ep_gain_1gw": 1.01,
+      "ep_gain_5gw": 5.99,
+      "net_ep_gain_5gw": 5.99,
+      "rationale": "Projected Jo\u00e3o Pedro 15.9 vs Solanke 23.1 pts over the next 5 GWs (best-XI impact, not raw player comparison).",
+      "risk_notes": [],
+      "recommended": true
+    },
+    {
+      "label": "Roll transfer (make no changes)",
+      "moves": [],
+      "free_transfers_used": 0,
+      "paid_transfers": 0,
+      "points_hit": 0,
+      "resulting_bank_tenths": 1,
+      "baseline_ep_1gw": 58.53,
+      "new_ep_1gw": 58.53,
+      "baseline_ep_5gw": 281.37,
+      "new_ep_5gw": 281.37,
+      "ep_gain_1gw": 0.0,
+      "ep_gain_5gw": 0.0,
+      "net_ep_gain_5gw": 0.0,
+      "rationale": "Keeps 4 free transfer(s) available next gameweek. Always the safe default when no transfer clears the minimum recommended net gain.",
+      "risk_notes": [],
+      "recommended": false
+    }
+  ],
+  "lineups_by_strategy": {
+    "conservative": {
+      "strategy": "conservative",
+      "starting_xi": [
+        1,
+        330,
+        586,
+        400,
+        40,
+        154,
+        15,
+        316,
+        411,
+        112,
+        106
+      ],
+      "bench_order": [
+        115,
+        279,
+        68,
+        572
+      ],
+      "captain_id": 400,
+      "vice_captain_id": 316,
+      "formation": "3-4-3",
+      "total_expected_points": 59.14,
+      "total_floor_points": 8.7,
+      "total_ceiling_points": 107.71,
+      "risk_aversion": null,
+      "total_risk_adjusted_score": null
+    },
+    "balanced": {
+      "strategy": "balanced",
+      "starting_xi": [
+        1,
+        330,
+        115,
+        400,
+        40,
+        154,
+        15,
+        316,
+        411,
+        112,
+        106
+      ],
+      "bench_order": [
+        68,
+        586,
+        279,
+        572
+      ],
+      "captain_id": 411,
+      "vice_captain_id": 40,
+      "formation": "3-4-3",
+      "total_expected_points": 63.39,
+      "total_floor_points": 8.67,
+      "total_ceiling_points": 115.12,
+      "risk_aversion": null,
+      "total_risk_adjusted_score": null
+    },
+    "aggressive": {
+      "strategy": "aggressive",
+      "starting_xi": [
+        330,
+        115,
+        40,
+        154,
+        15,
+        316,
+        411,
+        572,
+        68,
+        112,
+        106
+      ],
+      "bench_order": [
+        400,
+        586,
+        279,
+        1
+      ],
+      "captain_id": 154,
+      "vice_captain_id": 411,
+      "formation": "3-4-3",
+      "total_expected_points": 58.48,
+      "total_floor_points": 7.52,
+      "total_ceiling_points": 116.91,
+      "risk_aversion": null,
+      "total_risk_adjusted_score": null
+    },
+    "risk_adjusted": {
+      "strategy": "risk_adjusted",
+      "starting_xi": [
+        1,
+        330,
+        586,
+        279,
+        400,
+        40,
+        15,
+        316,
+        68,
+        112,
+        106
+      ],
+      "bench_order": [
+        115,
+        411,
+        154,
+        572
+      ],
+      "captain_id": 1,
+      "vice_captain_id": 586,
+      "formation": "4-4-2",
+      "total_expected_points": 49.48,
+      "total_floor_points": 6.83,
+      "total_ceiling_points": 97.26,
+      "risk_aversion": 1.0,
+      "total_risk_adjusted_score": -67.52
+    }
+  },
+  "key_risks": [
+    "Doku: injury_or_availability_doubt",
+    "Palmer: injury_or_availability_doubt",
+    "Emersonn: injury_or_availability_doubt",
+    "Haaland: injury_or_availability_doubt",
+    "Van Hecke: injury_or_availability_doubt"
+  ],
+  "what_would_change_this": [
+    "Late injury/suspension news on any starter or the captain before the deadline.",
+    "A confirmed change to predicted lineups (e.g. a key player ruled out in a press conference) after this report was generated.",
+    "A price change that alters what you can afford -- re-run before the deadline if it's been more than a few hours.",
+    "If the sell candidate's price rises before you act, your effective budget shrinks and this exact transfer may no longer be affordable."
+  ],
+  "squad_risk_profiles": {
+    "1": {
+      "player_id": 1,
+      "tier": "balanced",
+      "std_dev": 2.185,
+      "coefficient_of_variation": 0.599,
+      "reasons": [
+        "Moderate spread relative to expectation (CV=0.60)."
+      ]
+    },
+    "330": {
+      "player_id": 330,
+      "tier": "risky",
+      "std_dev": 3.234,
+      "coefficient_of_variation": 1.127,
+      "reasons": [
+        "Wide spread relative to expectation (CV=1.13)."
+      ]
+    },
+    "586": {
+      "player_id": 586,
+      "tier": "risky",
+      "std_dev": 2.349,
+      "coefficient_of_variation": 0.893,
+      "reasons": [
+        "Wide spread relative to expectation (CV=0.89).",
+        "Live injury/availability doubt -- real chance of not playing at all."
+      ]
+    },
+    "115": {
+      "player_id": 115,
+      "tier": "risky",
+      "std_dev": 3.769,
+      "coefficient_of_variation": 0.904,
+      "reasons": [
+        "Wide spread relative to expectation (CV=0.90)."
+      ]
+    },
+    "279": {
+      "player_id": 279,
+      "tier": "risky",
+      "std_dev": 2.36,
+      "coefficient_of_variation": 1.017,
+      "reasons": [
+        "Wide spread relative to expectation (CV=1.02).",
+        "Live injury/availability doubt -- real chance of not playing at all."
+      ]
+    },
+    "400": {
+      "player_id": 400,
+      "tier": "risky",
+      "std_dev": 2.786,
+      "coefficient_of_variation": 0.518,
+      "reasons": [
+        "Moderate spread relative to expectation (CV=0.52).",
+        "Live injury/availability doubt -- real chance of not playing at all."
+      ]
+    },
+    "40": {
+      "player_id": 40,
+      "tier": "risky",
+      "std_dev": 3.644,
+      "coefficient_of_variation": 0.61,
+      "reasons": [
+        "Wide spread relative to expectation (CV=0.61)."
+      ]
+    },
+    "154": {
+      "player_id": 154,
+      "tier": "risky",
+      "std_dev": 4.405,
+      "coefficient_of_variation": 0.808,
+      "reasons": [
+        "Wide spread relative to expectation (CV=0.81).",
+        "Live injury/availability doubt -- real chance of not playing at all."
+      ]
+    },
+    "15": {
+      "player_id": 15,
+      "tier": "risky",
+      "std_dev": 3.851,
+      "coefficient_of_variation": 0.784,
+      "reasons": [
+        "Wide spread relative to expectation (CV=0.78)."
+      ]
+    },
+    "316": {
+      "player_id": 316,
+      "tier": "risky",
+      "std_dev": 2.86,
+      "coefficient_of_variation": 0.71,
+      "reasons": [
+        "Wide spread relative to expectation (CV=0.71).",
+        "Live injury/availability doubt -- real chance of not playing at all."
+      ]
+    },
+    "411": {
+      "player_id": 411,
+      "tier": "risky",
+      "std_dev": 4.268,
+      "coefficient_of_variation": 0.528,
+      "reasons": [
+        "Moderate spread relative to expectation (CV=0.53).",
+        "Live injury/availability doubt -- real chance of not playing at all."
+      ]
+    },
+    "572": {
+      "player_id": 572,
+      "tier": "risky",
+      "std_dev": 2.415,
+      "coefficient_of_variation": 0.696,
+      "reasons": [
+        "Wide spread relative to expectation (CV=0.70)."
+      ]
+    },
+    "165": {
+      "player_id": 165,
+      "tier": "risky",
+      "std_dev": 0.0,
+      "coefficient_of_variation": null,
+      "reasons": [
+        "Expected points too low (0.0) for a stable CV estimate.",
+        "Live injury/availability doubt -- real chance of not playing at all.",
+        "Inconsistent minutes when selected -- rotation risk."
+      ]
+    },
+    "504": {
+      "player_id": 504,
+      "tier": "risky",
+      "std_dev": 2.992,
+      "coefficient_of_variation": 1.197,
+      "reasons": [
+        "Wide spread relative to expectation (CV=1.20)."
+      ]
+    },
+    "68": {
+      "player_id": 68,
+      "tier": "risky",
+      "std_dev": 3.566,
+      "coefficient_of_variation": 1.084,
+      "reasons": [
+        "Wide spread relative to expectation (CV=1.08)."
+      ]
+    }
+  },
+  "fixture_correlation": {
+    "same_team_rho": 0.0297,
+    "opponent_rho": -0.0349,
+    "n_same_team_gameweeks": 38,
+    "n_opponent_gameweeks": 38
+  },
+  "starting_xi_independent_variance": 130.70302174267962,
+  "starting_xi_correlated_variance": 131.3328922522769,
+  "transfer_timing": null
+}
